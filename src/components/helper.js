@@ -205,33 +205,63 @@ const isKingMove = (board, piece, fromRow, fromCol, toRow, toCol) => {
           return true;
         };
 
-       
-        
+
         const isPawnMove = (board, piece, fromRow, fromCol, toRow, toCol, direction, lastMove) => {
-          console.log("ispawnmove :", piece)
+          if (!piece || piece.piece !== 'P') return false;
+          
+          console.log("ispawnmove :", piece);
           const step = piece.color === 'white' ? -1 : 1;
-        
+          
           // Normal move
-          if (fromCol === toCol && board[toRow][toCol] === null) {
+          if (fromCol === toCol && board[toRow] && board[toRow][toCol] === null) {
             if (fromRow + step === toRow) return true; // Move one square forward
-            if (piece.color === 'white' && fromRow === 6 && toRow === 4 && board[5][toCol] === null) return true; // Move two squares from starting position
-            if (piece.color === 'black' && fromRow === 1 && toRow === 3 && board[2][toCol] === null) return true; // Move two squares from starting position
+            if (piece.color === 'white' && fromRow === 6 && toRow === 4 && board[5] && board[5][toCol] === null) return true; // Move two squares from starting position
+            if (piece.color === 'black' && fromRow === 1 && toRow === 3 && board[2] && board[2][toCol] === null) return true; // Move two squares from starting position
           }
-        
-        
+          
           // Capture move
-          if (Math.abs(fromCol - toCol) === 1 && fromRow + step === toRow && board[toRow][toCol] && board[toRow][toCol].color !== piece.color) {
+          if (Math.abs(fromCol - toCol) === 1 && fromRow + step === toRow && board[toRow] && board[toRow][toCol] && board[toRow][toCol].color !== piece.color) {
             return true;
           }
-        
+          
           // En passant
-          if (lastMove && lastMove.piece.piece === 'P' && Math.abs(lastMove.fromRow - lastMove.toRow) === 2 &&
-              lastMove.toCol === toCol && toRow === lastMove.toRow + step && Math.abs(fromRow - lastMove.toRow) === 1) {
+          if (lastMove && lastMove.piece && lastMove.piece.piece === 'P' && 
+              Math.abs(lastMove.fromRow - lastMove.toRow) === 2 &&
+              lastMove.toCol === toCol && toRow === lastMove.toRow + step && 
+              Math.abs(fromRow - lastMove.toRow) === 1) {
             return true;
           }
-        
+          
           return false;
         };
+       
+        
+        // const isPawnMove = (board, piece, fromRow, fromCol, toRow, toCol, direction, lastMove) => {
+        //   if (!piece || piece.piece !== 'P') return false;
+        //   console.log("ispawnmove :", piece)
+        //   const step = piece.color === 'white' ? -1 : 1;
+        
+        //   // Normal move
+        //   if (fromCol === toCol && board[toRow][toCol] === null) {
+        //     if (fromRow + step === toRow) return true; // Move one square forward
+        //     if (piece.color === 'white' && fromRow === 6 && toRow === 4 && board[5][toCol] === null) return true; // Move two squares from starting position
+        //     if (piece.color === 'black' && fromRow === 1 && toRow === 3 && board[2][toCol] === null) return true; // Move two squares from starting position
+        //   }
+        
+        
+        //   // Capture move
+        //   if (Math.abs(fromCol - toCol) === 1 && fromRow + step === toRow && board[toRow][toCol] && board[toRow][toCol].color !== piece.color) {
+        //     return true;
+        //   }
+        
+        //   // En passant
+        //   if (lastMove && lastMove.piece.piece === 'P' && Math.abs(lastMove.fromRow - lastMove.toRow) === 2 &&
+        //       lastMove.toCol === toCol && toRow === lastMove.toRow + step && Math.abs(fromRow - lastMove.toRow) === 1) {
+        //     return true;
+        //   }
+        
+        //   return false;
+        // };
   
 // Function to check if the opponent's king is in check
 export const isInCheck = (board, opponentColor) => {

@@ -74,31 +74,6 @@ const ChessBoard = () => {
     }
   }, [turn, lastMove, board, gameOver]);
 
-  // useEffect(() => {
-  //   const timer = setInterval(() => {
-  //     if (!gameOver) {
-  //       if (turn === 'white') {
-  //         if (whiteTime > 0) {
-  //           setWhiteTime((time) => time - 1);
-  //         } else {
-  //           handleGameOver('black', 'Time out');
-  //           clearInterval(timer);
-  //         }
-  //       } else {
-  //         if (blackTime > 0) {
-  //           setBlackTime((time) => time - 1);
-  //         } else {
-  //           handleGameOver('white', 'Time out');
-  //           clearInterval(timer);
-  //         }
-  //       }
-  //     } else {
-  //       clearInterval(timer);
-  //     }
-  //   }, 1000);
-
-  //   return () => clearInterval(timer);
-  // }, [turn, whiteTime, blackTime, gameOver]);
 
   useEffect(() => {
     if (!gameOver) {

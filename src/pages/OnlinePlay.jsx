@@ -16,7 +16,8 @@ const OnlinePlay = () => {
   const [opponentUsername, setOpponentUsername] = useState('');
   const [selectedTime, setSelectedTime] = useState(null);
   const [joinGameCode, setJoinGameCode] = useState('');
-  const [gameStatus, setGameStatus] = useState('waiting'); // 'waiting' or 'started'
+  const [gameStatus, setGameStatus] = useState('waiting');
+  const [playerColor, setPlayerColor] = useState(null);
 
   const navigate = useNavigate();
 
@@ -27,14 +28,23 @@ const OnlinePlay = () => {
     } else {
       navigate('/login');
     }
-    // Listen for opponent joining
-    socket.on('opponentJoined', ({ opponentUsername }) => {
-      setOpponentUsername(opponentUsername);
-      setGameStatus('started');
+
+    socket.on('gameState', ({ players, currentTurn }) => {
+      const player = players.find(p => p.id === storedPlayerId);
+      const opponent = players.find(p => p.id !== storedPlayerId);
+      
+      if (player) {
+        setPlayerColor(player.color);
+        setPlayerUsername(player.username);
+        if (opponent) {
+          setOpponentUsername(opponent.username);
+          setGameStatus('started');
+        }
+      }
     });
 
     return () => {
-      socket.off('opponentJoined');
+      socket.off('gameState');
     };
   }, [navigate]);
 
@@ -51,9 +61,9 @@ const OnlinePlay = () => {
           setPlayerUsername(response.data.username);
           setGameInfo(response.data.game);
           setGameStatus('waiting');
-          console.log('Game created with username , Game Code:', response.data.username, response.data.gameCode);
-          // Join the Socket.IO room for this game
-          socket.emit('joinRoom', { gameCode: response.data.gameCode, playerId, username: response.data.username });        } else {
+          console.log('Game created with username, Game Code:', response.data.username, response.data.gameCode);
+          socket.emit('joinRoom', { gameCode: response.data.gameCode, playerId, username: response.data.username });
+        } else {
           throw new Error('Invalid response from server');
         }
       } catch (error) {
@@ -77,14 +87,8 @@ const OnlinePlay = () => {
           setGameCode(joinGameCode);
           setGameInfo(response.data.game);
           setSelectedTime(response.data.game.timeControl);
-          setPlayerUsername(response.data.whitePlayer);
-          setOpponentUsername(response.data.blackPlayer);
-          setGameStatus('started');
-           // Join the Socket.IO room for this game
-           socket.emit('joinRoom', { gameCode: joinGameCode, playerId, username: response.data.blackPlayer || response.data.whitePlayer });
-
-           // Notify the opponent that you've joined
-          //  socket.emit('playerJoined', { gameCode: joinGameCode, username: response.data.blackPlayer  || response.data.whitePlayer   });
+          setPlayerUsername(response.data.blackPlayer);
+          socket.emit('joinRoom', { gameCode: joinGameCode, playerId, username: response.data.playerUsername });
         } else {
           throw new Error('Invalid response from server');
         }
@@ -97,7 +101,15 @@ const OnlinePlay = () => {
     }
   };
 
-  // console.log("game id", gameCode)
+  const copyGameCode = () => {
+    navigator.clipboard.writeText(gameCode)
+        .then(() => {
+            alert('Game code copied to clipboard!');
+        })
+        .catch(err => {
+            console.error('Failed to copy game code: ', err);
+        });
+};
 
   return (
     <div className="text-center">
@@ -145,24 +157,31 @@ const OnlinePlay = () => {
             Join Game
           </button>
         </div>
-        {gameCode && <p>Game Code: {gameCode}</p>}
-        {playerUsername && <p>Your Username: {playerUsername}</p>}
-        {opponentUsername && <p>Opponent's Username: {opponentUsername}</p>}
+
         {gameCode && (
-          <OnlineChessBoard
-            socket={socket}
-            gameCode={gameCode}
-            playerId={playerId}
-            playerUsername={playerUsername}
-            opponentUsername={opponentUsername}
-            selectedTime={selectedTime}
-            gameStatus={gameStatus}
-            gameInfo={gameInfo}
-
-          />
-
-
-        )}
+                    <div className="mt-4">
+                        <p>New Game Code: <span className="font-bold">{gameCode}</span></p>
+                        <button
+                            onClick={copyGameCode}
+                            className="bg-green-500 text-white py-2 px-4 rounded mt-2"
+                        >
+                            Copy Game Code
+                        </button>
+                    </div>
+                )}
+        {gameCode && (
+        <OnlineChessBoard
+          socket={socket}
+          gameCode={gameCode}
+          playerId={playerId}
+          playerUsername={playerUsername}
+          opponentUsername={opponentUsername}
+          selectedTime={selectedTime}
+          gameStatus={gameStatus}
+          gameInfo={gameInfo}
+          playerColor={playerColor}
+        />
+      )}
       </main>
     </div>
   );

@@ -1,9 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { isLegalMove,shouldPromotePawn, isLegalMoveConsideringCheck, initializeBoard, isInCheck, isCheckmate } from './helper';
+import { isLegalMove, shouldPromotePawn, isLegalMoveConsideringCheck, initializeBoard, isInCheck, isCheckmate } from './helper';
 import { Square } from './Square';
 import PromotionDialog from './PromotionDialog';
 
-const OnlineChessBoard = ({ socket, gameCode, playerId, playerUsername, opponentUsername, selectedTime, gameStatus, gameInfo }) => {
+const OnlineChessBoard = ({ 
+  socket, 
+  gameCode, 
+  playerId, 
+  playerUsername, 
+  opponentUsername, 
+  selectedTime, 
+  gameStatus, 
+  gameInfo,
+  playerColor 
+}) => {
   const [board, setBoard] = useState(initializeBoard());
   const [selectedPiece, setSelectedPiece] = useState(null);
   const [legalMoves, setLegalMoves] = useState([]);
@@ -16,56 +26,33 @@ const OnlineChessBoard = ({ socket, gameCode, playerId, playerUsername, opponent
   const [modalVisible, setModalVisible] = useState(false);
   const [promotionChoice, setPromotionChoice] = useState(null);
   const [gameOverReason, setGameOverReason] = useState(null);
-  const [playerColor, setPlayerColor] = useState(null);
 
   const handlePromotionSelect = (selectedPiece) => {
     const { rowIndex, colIndex, pieceColor, fromRow, fromCol } = promotionChoice;
-    const newBoard = JSON.parse(JSON.stringify(board)); // Deep copy of the board
+    const newBoard = JSON.parse(JSON.stringify(board));
     newBoard[rowIndex][colIndex] = { piece: selectedPiece, color: pieceColor };
-    newBoard[fromRow][fromCol] = null; // Remove the pawn from its original position
+    newBoard[fromRow][fromCol] = null;
     setBoard(newBoard);
     setPromotionChoice(null);
-    setSelectedPiece(null); // Clear the selected piece
+    setSelectedPiece(null);
     setTurn(turn === 'white' ? 'black' : 'white');
+    
+    // Emit the move to the server
+    const move = {
+      from: `${fromRow},${fromCol}`,
+      to: `${rowIndex},${colIndex}`,
+      piece: { piece: selectedPiece, color: pieceColor },
+    };
+    socket.emit('makeMove', { gameCode, move, playerId });
   };
 
-  // useEffect(() => {
-  //   socket.on('moveMade', ({ move }) => {
-  //     const parsedMove = JSON.parse(move);
-  //     const newBoard = JSON.parse(JSON.stringify(board));
-  //     const { from, to, piece } = parsedMove;
-  //     const [fromRow, fromCol] = from.split(',').map(Number);
-  //     const [toRow, toCol] = to.split(',').map(Number);
-  //     newBoard[toRow][toCol] = piece;
-  //     newBoard[fromRow][fromCol] = null;
-  //     setBoard(newBoard);
-  //     setTurn(turn === 'white' ? 'black' : 'white');
-  //     setLastMove({ fromRow, fromCol, toRow, toCol });
-  //   });
-
-  //   return () => {
-  //     socket.off('moveMade');
-  //   };
-  // }, [socket, board, turn]);
-
-  // useEffect(() => {
-  //   // Determine player color based on username order (this is just an example, adjust as needed)
-  //   setPlayerColor(turn === 'white' ? 'white' : 'black');
-  // }, [turn]);
-
-
-
   useEffect(() => {
-    socket.on('playerColor', ({ color }) => {
-      console.log(color);
-      setPlayerColor(color);
-    });
-
-    socket.on('gameStart', ({ currentTurn }) => {
+    socket.on('gameState', ({ players, currentTurn }) => {
       setTurn(currentTurn);
     });
 
-    socket.on('moveMade', ({ move, playerId: moveMakePlayerId, currentTurn }) => {
+    socket.on('moveMade', ({ move, playerId: moveMakerPlayerId, currentTurn }) => {
+      console.log('Move made:', move, 'by', moveMakerPlayerId, 'current turn:', currentTurn);
       const { from, to, piece } = move;
       const [fromRow, fromCol] = from.split(',').map(Number);
       const [toRow, toCol] = to.split(',').map(Number);
@@ -79,19 +66,36 @@ const OnlineChessBoard = ({ socket, gameCode, playerId, playerUsername, opponent
       
       setTurn(currentTurn);
       setLastMove({ fromRow, fromCol, toRow, toCol });
+      setSelectedPiece(null);
+      setLegalMoves([]);
     });
 
     return () => {
-      socket.off('playerColor');
-      socket.off('gameStart');
+      socket.off('gameState');
       socket.off('moveMade');
     };
   }, [socket]);
 
 
   useEffect(() => {
+    if (!gameOver) {
+      const opponentColor = turn === 'white' ? 'black' : 'white';
+      const inCheck = isInCheck(board, opponentColor);
+      const checkmateResult = isCheckmate(board, opponentColor, lastMove);
+
+      console.log('Checkmate result:', checkmateResult);
+      if (inCheck) {
+        console.log("check")
+      } else if (checkmateResult.isGameOver) {
+        handleGameOver(checkmateResult.winner, 'Checkmate');
+
+      }
+    }
+  }, [turn, lastMove, board, gameOver]);
+
+  useEffect(() => {
     let timer;
-    if ( !gameOver) {
+    if (!gameOver && gameStatus === 'started') {
       timer = setInterval(() => {
         if (turn === 'white') {
           setWhiteTime((prevTime) => {
@@ -115,15 +119,16 @@ const OnlineChessBoard = ({ socket, gameCode, playerId, playerUsername, opponent
       }, 1000);
     }
     return () => clearInterval(timer);
-  }, [ gameOver, turn]);
+  }, [gameOver, gameStatus, turn]);
 
- const handleCellClick = (rowIndex, colIndex) => {
-    const piece = board[rowIndex][colIndex];
-
+  const handleCellClick = (rowIndex, colIndex) => {
+    const piece = board[rowIndex] && board[rowIndex][colIndex];
+  
     if (turn !== playerColor) {
-      return; // Not this player's turn
+      console.log("Not your turn");
+      return;
     }
-
+  
     if (piece && piece.color === playerColor) {
       setSelectedPiece({ piece, fromRow: rowIndex, fromCol: colIndex });
       const moves = [];
@@ -148,7 +153,7 @@ const OnlineChessBoard = ({ socket, gameCode, playerId, playerUsername, opponent
           to: `${rowIndex},${colIndex}`,
           piece: piece,
         };
-
+  
         if (shouldPromotePawn(piece, rowIndex)) {
           setPromotionChoice({ rowIndex, colIndex, pieceColor: piece.color, fromRow, fromCol });
         } else {
@@ -159,6 +164,7 @@ const OnlineChessBoard = ({ socket, gameCode, playerId, playerUsername, opponent
           setLegalMoves([]);
           
           socket.emit('makeMove', { gameCode, move, playerId });
+          setTurn(turn === 'white' ? 'black' : 'white');
         }
       } else {
         setSelectedPiece(null);
@@ -184,11 +190,11 @@ const OnlineChessBoard = ({ socket, gameCode, playerId, playerUsername, opponent
     <div className="flex flex-col items-center justify-center h-screen bg-gray-800">
       <div className="flex justify-between items-center mb-4 w-full px-4">
         <div className="text-white">
-          <p>{playerUsername || 'Your username'} ({playerColor})</p>
+          <p>{playerUsername} ({playerColor})</p>
           <p>Time: {formatTime(playerColor === 'white' ? whiteTime : blackTime)}</p>
         </div>
         <div className="text-white">
-          <p>{opponentUsername || (gameStatus === 'waiting' ? 'Waiting for opponent' : 'Opponent')} ({playerColor === 'white' ? 'black' : 'white'})</p>
+          <p>{opponentUsername || 'Waiting for opponent'} ({playerColor === 'white' ? 'black' : 'white'})</p>
           <p>Time: {formatTime(playerColor === 'white' ? blackTime : whiteTime)}</p>
         </div>
       </div>
@@ -247,6 +253,237 @@ const OnlineChessBoard = ({ socket, gameCode, playerId, playerUsername, opponent
 };
 
 export default OnlineChessBoard;
+
+//correct code with little error
+// import React, { useState, useEffect } from 'react';
+// import { isLegalMove, shouldPromotePawn, isLegalMoveConsideringCheck, initializeBoard, isInCheck, isCheckmate } from './helper';
+// import { Square } from './Square';
+// import PromotionDialog from './PromotionDialog';
+
+// const OnlineChessBoard = ({ 
+//   socket, 
+//   gameCode, 
+//   playerId, 
+//   playerUsername, 
+//   opponentUsername, 
+//   selectedTime, 
+//   gameStatus, 
+//   gameInfo,
+//   playerColor 
+// }) => {
+//   const [board, setBoard] = useState(initializeBoard());
+//   const [selectedPiece, setSelectedPiece] = useState(null);
+//   const [legalMoves, setLegalMoves] = useState([]);
+//   const [turn, setTurn] = useState('white');
+//   const [lastMove, setLastMove] = useState(null);
+//   const [whiteTime, setWhiteTime] = useState(selectedTime * 60 || 5*60);
+//   const [blackTime, setBlackTime] = useState(selectedTime * 60 || 5*60);
+//   const [gameOver, setGameOver] = useState(false);
+//   const [winner, setWinner] = useState('');
+//   const [modalVisible, setModalVisible] = useState(false);
+//   const [promotionChoice, setPromotionChoice] = useState(null);
+//   const [gameOverReason, setGameOverReason] = useState(null);
+
+
+//   const handlePromotionSelect = (selectedPiece) => {
+//     const { rowIndex, colIndex, pieceColor, fromRow, fromCol } = promotionChoice;
+//     const newBoard = JSON.parse(JSON.stringify(board)); // Deep copy of the board
+//     newBoard[rowIndex][colIndex] = { piece: selectedPiece, color: pieceColor };
+//     newBoard[fromRow][fromCol] = null; // Remove the pawn from its original position
+//     setBoard(newBoard);
+//     setPromotionChoice(null);
+//     setSelectedPiece(null); // Clear the selected piece
+//     setTurn(turn === 'white' ? 'black' : 'white');
+//   };
+
+//   useEffect(() => {
+//     socket.on('gameState', ({ players, currentTurn }) => {
+//       setTurn(currentTurn);
+//     });
+
+//     socket.on('moveMade', ({ move, playerId: moveMakerPlayerId, currentTurn }) => {
+//       console.log('Move made:', move, 'by', moveMakerPlayerId, 'current turn:', currentTurn);
+//       const { from, to, piece } = move;
+//       const [fromRow, fromCol] = from.split(',').map(Number);
+//       const [toRow, toCol] = to.split(',').map(Number);
+      
+//       setBoard(prevBoard => {
+//         const newBoard = JSON.parse(JSON.stringify(prevBoard));
+//         newBoard[toRow][toCol] = piece;
+//         newBoard[fromRow][fromCol] = null;
+//         return newBoard;
+//       });
+      
+//       setTurn(currentTurn);
+//       setLastMove({ fromRow, fromCol, toRow, toCol });
+//     });
+
+//     return () => {
+//       socket.off('gameState');
+//       socket.off('moveMade');
+//     };
+//   }, [socket]);
+
+//   useEffect(() => {
+//     let timer;
+//     if (!gameOver && gameStatus === 'started') {
+//       timer = setInterval(() => {
+//         if (turn === 'white') {
+//           setWhiteTime((prevTime) => {
+//             if (prevTime <= 0) {
+//               clearInterval(timer);
+//               handleGameOver('black', 'Time out');
+//               return 0;
+//             }
+//             return prevTime - 1;
+//           });
+//         } else {
+//           setBlackTime((prevTime) => {
+//             if (prevTime <= 0) {
+//               clearInterval(timer);
+//               handleGameOver('white', 'Time out');
+//               return 0;
+//             }
+//             return prevTime - 1;
+//           });
+//         }
+//       }, 1000);
+//     }
+//     return () => clearInterval(timer);
+//   }, [gameOver, gameStatus, turn]);
+
+//   const handleCellClick = (rowIndex, colIndex) => {
+//     const piece = board[rowIndex] && board[rowIndex][colIndex];
+
+//     if (turn !== playerColor) {
+//       console.log("Not your turn");
+//       return;
+//     }
+
+//     if (piece && piece.color === playerColor) {
+//       setSelectedPiece({ piece, fromRow: rowIndex, fromCol: colIndex });
+//       const moves = [];
+//       for (let i = 0; i < 8; i++) {
+//         for (let j = 0; j < 8; j++) {
+//           if (isLegalMove(board, piece, rowIndex, colIndex, i, j, lastMove) &&
+//               isLegalMoveConsideringCheck(board, piece, rowIndex, colIndex, i, j, lastMove)) {
+//             moves.push({ row: i, col: j });
+//           }
+//         }
+//       }
+//       setLegalMoves(moves);
+//     } else if (selectedPiece) {
+//       const { piece, fromRow, fromCol } = selectedPiece;
+//       if (
+//         isLegalMove(board, piece, fromRow, fromCol, rowIndex, colIndex, lastMove) &&
+//         isLegalMoveConsideringCheck(board, piece, fromRow, fromCol, rowIndex, colIndex, lastMove)
+//       ) {
+//         const newBoard = JSON.parse(JSON.stringify(board));
+//         const move = {
+//           from: `${fromRow},${fromCol}`,
+//           to: `${rowIndex},${colIndex}`,
+//           piece: piece,
+//         };
+
+//         if (shouldPromotePawn(piece, rowIndex)) {
+//           setPromotionChoice({ rowIndex, colIndex, pieceColor: piece.color, fromRow, fromCol });
+//         } else {
+//           newBoard[rowIndex][colIndex] = piece;
+//           newBoard[fromRow][fromCol] = null;
+//           setBoard(newBoard);
+//           setSelectedPiece(null);
+//           setLegalMoves([]);
+          
+//           socket.emit('makeMove', { gameCode, move, playerId });
+//         }
+//       } else {
+//         setSelectedPiece(null);
+//         setLegalMoves([]);
+//       }
+//     }
+//   };
+
+
+//   const handleGameOver = (winnerColor, reason) => {
+//     setGameOver(true);
+//     setWinner(winnerColor === 'white' ? 'White' : 'Black');
+//     setGameOverReason(reason);
+//     setModalVisible(true);
+//   };
+
+//   const formatTime = (time) => {
+//     const minutes = Math.floor(time / 60);
+//     const seconds = time % 60;
+//     return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+//   };
+
+//   return (
+//     <div className="flex flex-col items-center justify-center h-screen bg-gray-800">
+//       <div className="flex justify-between items-center mb-4 w-full px-4">
+//         <div className="text-white">
+//           <p>{playerUsername} ({playerColor})</p>
+//           <p>Time: {formatTime(playerColor === 'white' ? whiteTime : blackTime)}</p>
+//         </div>
+//         <div className="text-white">
+//           <p>{opponentUsername || 'Waiting for opponent'} ({playerColor === 'white' ? 'black' : 'white'})</p>
+//           <p>Time: {formatTime(playerColor === 'white' ? blackTime : whiteTime)}</p>
+//         </div>
+//       </div>
+//       <div className={`text-white mb-4 ${turn === playerColor ? 'bg-green-500' : 'bg-red-500'} px-4 py-2 rounded`}>
+//         {turn === playerColor ? "Your turn" : "Opponent's turn"}
+//       </div>
+
+//       <div className="grid grid-cols-8 relative">
+//         {board.map((row, rowIndex) =>
+//           row.map((cell, colIndex) => (
+//             <Square
+//               key={`${rowIndex}-${colIndex}`}
+//               piece={cell ? cell.piece : null}
+//               color={cell ? cell.color : null}
+//               rowIndex={rowIndex}
+//               colIndex={colIndex}
+//               onClick={() => handleCellClick(rowIndex, colIndex)}
+//               selected={
+//                 selectedPiece &&
+//                 selectedPiece.fromRow === rowIndex &&
+//                 selectedPiece.fromCol === colIndex
+//               }
+//               lastMove={lastMove}
+//               highlight={legalMoves.some(move => move.row === rowIndex && move.col === colIndex)}
+//             />
+//           ))
+//         )}
+//         {promotionChoice && (
+//           <PromotionDialog
+//             onSelect={handlePromotionSelect}
+//             position={{
+//               top: `${promotionChoice.rowIndex * 64}px`,
+//               left: `${promotionChoice.colIndex * 64}px`,
+//             }}
+//           />
+//         )}
+//       </div>
+
+//       {modalVisible && (
+//         <div className="fixed top-0 left-0 w-full h-full bg-black bg-opacity-50 flex justify-center items-center">
+//           <div className="bg-white p-8 rounded-lg">
+//             <p className="text-xl font-bold mb-2">
+//               {winner === 'Draw' ? 'The game is a draw.' : `${winner} wins by ${gameOverReason}`}
+//             </p>
+//             <button
+//               onClick={() => window.location.reload()}
+//               className="bg-blue-500 text-white px-4 py-2 rounded"
+//             >
+//               New Game
+//             </button>
+//           </div>
+//         </div>
+//       )}
+//     </div>
+//   );
+// };
+
+// export default OnlineChessBoard;
 
 
 // import React, { useState, useEffect } from 'react';
