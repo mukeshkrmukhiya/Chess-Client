@@ -336,8 +336,15 @@ const OnlineChessBoard = ({
   useEffect(() => {
     socket.on('gameState', ({ players, currentTurn }) => {
       setTurn(currentTurn);
-      setCurrentPlayer(players && players[0].id === playerId ? players[0].username : players[1].username);
-      setOpponentPlayer(players && players[0].id !== playerId ? players[0].username : players[1].username);
+      if (players && players.length >= 2) {
+        const currentPlayer = players.find(player => player.id === playerId);
+        const opponentPlayer = players.find(player => player.id !== playerId);
+        
+        if (currentPlayer && opponentPlayer) {
+          setCurrentPlayer(currentPlayer.username);
+          setOpponentPlayer(opponentPlayer.username);
+        }
+      }
       setGameStatus(players.length > 1 ? 'started' : 'waiting');
       console.log("player", players);
     });

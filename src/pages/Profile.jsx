@@ -6,6 +6,7 @@ const Profile = () => {
     const [profile, setProfile] = useState(null);
     const [error, setError] = useState('');
     const navigate = useNavigate ();
+    const backendUrl = "https://chess-backend-kf5d.onrender.com";
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -20,7 +21,7 @@ const Profile = () => {
                         Authorization: `Bearer ${token}`,
                     },
                 };
-                const response = await axios.get('http://localhost:5000/api/players/profile', config);
+                const response = await axios.get(`${backendUrl}/api/players/profile`, config);
                 setProfile(response.data);
             // console.log( localStorage.getItem('playerId') );
             // console.log( response.data._id );

@@ -9,6 +9,7 @@ const Register = () => {
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const navigate = useNavigate();
+    const backendUrl = 'https://chess-backend-kf5d.onrender.com'
 
     
 
@@ -16,7 +17,7 @@ const Register = () => {
         e.preventDefault();
         setError('');
         try {
-            const res = await axios.post('http://localhost:5000/api/players/register', {
+            const res = await axios.post(`${backendUrl}/api/players/register`, {
                 username,
                 email,
                 password

@@ -6,11 +6,12 @@ const Login = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const navigate = useNavigate();
+    const backendUrl = "https://chess-backend-kf5d.onrender.com";
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            const res = await axios.post('http://localhost:5000/api/players/login', {
+            const res = await axios.post(`${backendUrl}/api/players/login`, {
                 email,
                 password
             });

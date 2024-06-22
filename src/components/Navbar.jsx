@@ -40,9 +40,9 @@ const Navbar = () => {
       </div>
       {isOpen && (
         <div className="md:hidden" onClick={ toggleMenu}>
-          <Link to="/" className="block text-gray-300 hover:text-white px-4 py-2">Play</Link>
+          <Link to="/play" className="block text-gray-300 hover:text-white px-4 py-2">Play</Link>
           <Link to="/onlineplay" className="block text-gray-300 hover:text-white px-4 py-2">OnlinePlay</Link>
-          <Link to="/play" className="block text-gray-300 hover:text-white px-4 py-2">Home</Link>
+          <Link to="/" className="block text-gray-300 hover:text-white px-4 py-2">Home</Link>
           <Link to="/profile" className="block text-gray-300 hover:text-white px-4 py-2">Profile</Link>
           <Link to="puzzle" className="block text-gray-300 hover:text-white px-4 py-2">LeaderBoard</Link>
           <Link to="/login" className="block text-gray-300 hover:text-white px-4 py-2">Login</Link>

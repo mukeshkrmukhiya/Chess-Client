@@ -4,7 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import OnlineChessBoard from '../components/OnlineChessBoard';
 
-const socket = io('http://localhost:5000');
+// const socket = io('http://localhost:5000');
+const socket = io('https://chess-backend-kf5d.onrender.com');
 
 const OnlinePlay = () => {
   const [gameId, setGameId] = useState(null);
@@ -21,6 +22,7 @@ const OnlinePlay = () => {
   const [gameStarted, setGameStarted] = useState(false);
   const [copyButtonText, setCopyButtonText] = useState('Copy');
   const [copyButtonDisabled, setCopyButtonDisabled] = useState(false);
+  const backendUrl = "https://chess-backend-kf5d.onrender.com";
 
   const navigate = useNavigate();
 
@@ -33,8 +35,8 @@ const OnlinePlay = () => {
     }
 
     socket.on('gameState', ({ players, currentTurn }) => {
-      const player = players.find(p => p.id === storedPlayerId);
-      const opponent = players.find(p => p.id !== storedPlayerId);
+      const player = players.find(p => p.id === playerId);
+      const opponent = players.find(p => p.id !== playerId);
       console.log("player play", players);
 
       if (player) {
@@ -55,7 +57,7 @@ const OnlinePlay = () => {
   const handleCreateGame = async () => {
     if (playerId && selectedTime) {
       try {
-        const response = await axios.post('http://localhost:5000/api/games/create', {
+        const response = await axios.post(`${backendUrl}/api/games/create`, {
           playerId,
           timeControl: selectedTime
         });
@@ -82,7 +84,7 @@ const OnlinePlay = () => {
   const handleJoinGame = async () => {
     if (joinGameCode && playerId) {
       try {
-        const response = await axios.post('http://localhost:5000/api/games/join', {
+        const response = await axios.post(`${backendUrl}/api/games/join`, {
           gameCode: joinGameCode,
           playerId
         });
