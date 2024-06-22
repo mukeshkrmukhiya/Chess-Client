@@ -24,13 +24,12 @@ export const Square = ({ piece, color, rowIndex, colIndex, onClick, selected, la
 
   return (
     <div
-      className={`w-16 h-16 flex justify-center items-center cursor-pointer  ${cellBackgroundColor} `}
+      className={`w-10 h-10 md:w-16 md:h-16 flex justify-center items-center cursor-pointer ${cellBackgroundColor}`}
       onClick={onClick}
     >
       {piece && <Piece piece={piece} color={color} />}
-      {highlight && <div className="absolute w-4 h-4 "></div>} {/* bg-yellow-400 rounded-full */}
+      {highlight && <div className="absolute w-2 h-2 md:w-3 md:h-3 bg-yellow-400 rounded-full opacity-50"></div>}
     </div>
   );
 };
-
 

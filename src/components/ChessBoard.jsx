@@ -240,7 +240,7 @@ const ChessBoard = () => {
                 {winner === 'Draw' ? 'The game is a draw.' : `${winner} wins`}
               </p>
               {winner !== 'Draw' && (
-                <p className="text-sm text-gray-500 mb-2">{`by ${gameOverReason}`}</p>
+                <p className="text-lg  sm:text-sm text-gray-500 mb-2">{`by ${gameOverReason}`}</p>
               )}
             </div>
             <button

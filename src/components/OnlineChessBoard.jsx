@@ -505,34 +505,32 @@ const OnlineChessBoard = ({
   };
 
   return (
-    <div className="flex flex-col items-center justify-center h-screen bg-gray-800">
-    
-      <div className="flex justify-between items-center mb-4 w-full px-4">
-        <div className="text-white">
-          <p>{currentPlayer} ({playerColor})</p>
-          <p>Time: {formatTime(playerColor === 'white' ? whiteTime : blackTime)}</p>
+    <div className="flex flex-col items-center justify-center min-h-screen w-full bg-gray-800 p-4">
+      <div className="w-full max-w-md mb-4">
+        <div className="flex justify-between items-center text-white text-sm md:text-base">
+          <div>
+            <p>{currentPlayer} ({playerColor})</p>
+            <p>Time: {formatTime(playerColor === 'white' ? whiteTime : blackTime)}</p>
+          </div>
+          <div>
+            <p>{opponentPlayer || 'Waiting...'} ({playerColor === 'white' ? 'black' : 'white'})</p>
+            <p>Time: {formatTime(playerColor === 'white' ? blackTime : whiteTime)}</p>
+          </div>
         </div>
-        <div className="text-white">
-        <button 
+      </div>
+      
+      <button
         onClick={handleLeaveGame}
-        className="  ml-6 bg-blue-500 text-white px-4 py-2 rounded hover:bg-red-600"
+        className="mb-4 bg-blue-500 text-white px-4 py-2 rounded text-sm md:text-base hover:bg-red-600"
       >
         Leave Game
       </button>
-        </div>
-        <div className="text-white">
-          <p>{opponentPlayer || 'Waiting for opponent'} ({playerColor === 'white' ? 'black' : 'white'})</p>
-          <p>Time: {formatTime(playerColor === 'white' ? blackTime : whiteTime)}</p>
-        </div>
-      </div>
-      <div className={`text-white mb-4 ${turn === playerColor ? 'bg-green-500' : 'bg-red-500'} px-4 py-2 rounded`}>
-        {turn === playerColor ? "Your turn" : "Opponent's turn"}
-      
-      </div>
 
+      <div className={`text-white mb-4 ${turn === playerColor ? 'bg-green-500' : 'bg-red-500'} px-4 py-2 rounded text-sm md:text-base`}>
+        {turn === playerColor ? "Your turn" : "Opponent's turn"}
+      </div>
 
       <div className="grid grid-cols-8 relative">
-
         {getDisplayedBoard().map((row, rowIndex) =>
           row.map((cell, colIndex) => (
             <Square
@@ -564,34 +562,29 @@ const OnlineChessBoard = ({
           <PromotionDialog
             onSelect={handlePromotionSelect}
             position={{
-              top: `${playerColor === 'black' ? (7 - promotionChoice.rowIndex) * 64 : promotionChoice.rowIndex * 64}px`,
-              left: `${playerColor === 'black' ? (7 - promotionChoice.colIndex) * 64 : promotionChoice.colIndex * 64}px`,
+              top: `${playerColor === 'black' ? (7 - promotionChoice.rowIndex) * 12.5 : promotionChoice.rowIndex * 12.5}%`,
+              left: `${playerColor === 'black' ? (7 - promotionChoice.colIndex) * 12.5 : promotionChoice.colIndex * 12.5}%`,
             }}
           />
         )}
       </div>
 
-
-      
-
-
       {modalVisible && (
-        <div className="fixed top-0 left-0 w-full h-full bg-black bg-opacity-50 flex justify-center items-center"
-        onClick={()=>toggleModal(modalVisible)}>
-          <div className="bg-white p-8 rounded-lg">
-            <p className="text-xl font-bold mb-2">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4"
+          onClick={() => toggleModal(modalVisible)}>
+          <div className="bg-white p-6 rounded-lg max-w-sm w-full">
+            <p className="text-lg font-bold mb-4 text-center">
               {winner === 'Draw' ? 'The game is a draw.' : `${winner} wins by ${gameOverReason}`}
             </p>
             <button
               onClick={() => window.location.reload()}
-              className="bg-blue-500 text-white px-4 py-2 rounded"
+              className="w-full bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
             >
               New Game
             </button>
           </div>
         </div>
       )}
-     
     </div>
   );
 };
