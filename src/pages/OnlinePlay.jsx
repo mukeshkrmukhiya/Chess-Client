@@ -18,6 +18,9 @@ const OnlinePlay = () => {
   const [joinGameCode, setJoinGameCode] = useState('');
   const [gameStatus, setGameStatus] = useState('waiting');
   const [playerColor, setPlayerColor] = useState(null);
+  const [gameStarted, setGameStarted] = useState(false);
+  const [copyButtonText, setCopyButtonText] = useState('Copy');
+  const [copyButtonDisabled, setCopyButtonDisabled] = useState(false);
 
   const navigate = useNavigate();
 
@@ -32,7 +35,8 @@ const OnlinePlay = () => {
     socket.on('gameState', ({ players, currentTurn }) => {
       const player = players.find(p => p.id === storedPlayerId);
       const opponent = players.find(p => p.id !== storedPlayerId);
-      
+      console.log("player play", players);
+
       if (player) {
         setPlayerColor(player.color);
         setPlayerUsername(player.username);
@@ -59,8 +63,8 @@ const OnlinePlay = () => {
         if (response.data && response.data.gameCode) {
           setGameCode(response.data.gameCode);
           setPlayerUsername(response.data.username);
-          setGameInfo(response.data.game);
           setGameStatus('waiting');
+          setGameStarted(true);
           console.log('Game created with username, Game Code:', response.data.username, response.data.gameCode);
           socket.emit('joinRoom', { gameCode: response.data.gameCode, playerId, username: response.data.username });
         } else {
@@ -88,7 +92,12 @@ const OnlinePlay = () => {
           setGameInfo(response.data.game);
           setSelectedTime(response.data.game.timeControl);
           setPlayerUsername(response.data.blackPlayer);
-          socket.emit('joinRoom', { gameCode: joinGameCode, playerId, username: response.data.playerUsername });
+          setOpponentUsername(response.data.whitePlayer);
+          setGameStatus('started');
+          setGameStarted(true);
+          // setWhitePlayer(response.data.blackPlayer);
+          console.log("Joined foined", joinGameCode, playerId, response.data.blackPlayer)
+          socket.emit('joinRoom', { gameCode: joinGameCode, playerId, username: response.data.blackPlayer });
         } else {
           throw new Error('Invalid response from server');
         }
@@ -103,13 +112,18 @@ const OnlinePlay = () => {
 
   const copyGameCode = () => {
     navigator.clipboard.writeText(gameCode)
-        .then(() => {
-            alert('Game code copied to clipboard!');
-        })
-        .catch(err => {
-            console.error('Failed to copy game code: ', err);
-        });
-};
+      .then(() => {
+        setCopyButtonText('Copied');
+        setCopyButtonDisabled(true);
+        setTimeout(() => {
+          setCopyButtonText('Copy');
+          setCopyButtonDisabled(false);
+        }, 5000);
+      })
+      .catch(err => {
+        console.error('Failed to copy game code: ', err);
+      });
+  };
 
   return (
     <div className="text-center">
@@ -117,71 +131,77 @@ const OnlinePlay = () => {
         <h1 className="text-xl font-bold">Online Chess Game</h1>
       </header>
       <main className="p-6">
-        <div className="flex justify-center mb-4">
-          <div className="mr-4">
-            <h3 className="mb-2">Select Time:</h3>
-            <div>
-              <button
-                className={`bg-gray-300 text-black p-2 m-1 ${selectedTime === 10 ? 'bg-green-500 text-white' : ''}`}
-                onClick={() => setSelectedTime(10)}
-              >
-                10 minutes
-              </button>
-              <button
-                className={`bg-gray-300 text-black p-2 m-1 ${selectedTime === 15 ? 'bg-green-500 text-white' : ''}`}
-                onClick={() => setSelectedTime(15)}
-              >
-                15 minutes
-              </button>
-              <button
-                className={`bg-gray-300 text-black p-2 m-1 ${selectedTime === 30 ? 'bg-green-500 text-white' : ''}`}
-                onClick={() => setSelectedTime(30)}
-              >
-                30 minutes
+        {!gameStarted && (
+          <>
+            <div className="flex justify-center mb-4">
+              <div className="mr-4">
+                <h3 className="mb-2">Select Time:</h3>
+                <div>
+                  <button
+                    className={`bg-gray-300 text-black p-2 m-1 ${selectedTime === 10 ? 'bg-green-500 text-white' : ''}`}
+                    onClick={() => setSelectedTime(10)}
+                  >
+                    10 minutes
+                  </button>
+                  <button
+                    className={`bg-gray-300 text-black p-2 m-1 ${selectedTime === 15 ? 'bg-green-500 text-white' : ''}`}
+                    onClick={() => setSelectedTime(15)}
+                  >
+                    15 minutes
+                  </button>
+                  <button
+                    className={`bg-gray-300 text-black p-2 m-1 ${selectedTime === 30 ? 'bg-green-500 text-white' : ''}`}
+                    onClick={() => setSelectedTime(30)}
+                  >
+                    30 minutes
+                  </button>
+                </div>
+              </div>
+              <button className="bg-green-500 text-white p-2 m-2" onClick={handleCreateGame}>
+                Create Game
               </button>
             </div>
-          </div>
-          <button className="bg-green-500 text-white p-2 m-2" onClick={handleCreateGame}>
-            Create Game
-          </button>
-        </div>
-        <div className="flex justify-center mb-4">
-          <input
-            type="text"
-            value={joinGameCode}
-            onChange={(e) => setJoinGameCode(e.target.value)}
-            placeholder="Enter Game Code"
-            className="p-2 mr-2 border border-gray-300 rounded"
-          />
-          <button className="bg-yellow-500 text-white p-2" onClick={handleJoinGame}>
-            Join Game
-          </button>
-        </div>
+            <div className="flex justify-center mb-4">
+              <input
+                type="text"
+                value={joinGameCode}
+                onChange={(e) => setJoinGameCode(e.target.value)}
+                placeholder="Enter Game Code"
+                className="p-2 mr-2 border border-gray-300 rounded"
+              />
+              <button className="bg-yellow-500 text-white p-2" onClick={handleJoinGame}>
+                Join Game
+              </button>
+            </div>
+          </>
+        )}
 
         {gameCode && (
-                    <div className="mt-4">
-                        <p>New Game Code: <span className="font-bold">{gameCode}</span></p>
-                        <button
-                            onClick={copyGameCode}
-                            className="bg-green-500 text-white py-2 px-4 rounded mt-2"
-                        >
-                            Copy Game Code
-                        </button>
-                    </div>
-                )}
+          <div className="mt-4 flex items-center justify-center">
+            <p className="mr-2">New Game Code: <span className="font-bold">{gameCode}</span></p>
+            <button
+              onClick={copyGameCode}
+              className="bg-green-500 text-white py-2 px-4 rounded"
+              disabled={copyButtonDisabled}
+            >
+              {copyButtonText}
+            </button>
+          </div>
+        )}
+
         {gameCode && (
-        <OnlineChessBoard
-          socket={socket}
-          gameCode={gameCode}
-          playerId={playerId}
-          playerUsername={playerUsername}
-          opponentUsername={opponentUsername}
-          selectedTime={selectedTime}
-          gameStatus={gameStatus}
-          gameInfo={gameInfo}
-          playerColor={playerColor}
-        />
-      )}
+          <OnlineChessBoard
+            socket={socket}
+            gameCode={gameCode}
+            playerId={playerId}
+            playerUsername={playerUsername}
+            opponentUsername={opponentUsername}
+            selectedTime={selectedTime}
+            currentGameStatus={gameStatus}
+            gameInfo={gameInfo}
+            playerColor={playerColor}
+          />
+        )}
       </main>
     </div>
   );
