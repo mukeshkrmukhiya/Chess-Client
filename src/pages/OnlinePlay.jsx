@@ -144,7 +144,7 @@ const OnlinePlay = () => {
           Make sure you're logged in. Select a time to create a game and send the game code to your friend.
         </h1>
       </header>
-      <div className="p-6">
+      <div className="md:p-6">
         {error && <div className="text-red-500 mb-4">{error}</div>}
         {!gameStarted && (
           <>
@@ -201,20 +201,23 @@ const OnlinePlay = () => {
           </div>
         )}
 
-        {gameCode && (
-          <OnlineChessBoard
-            socket={socket}
-            gameCode={gameCode}
-            playerId={playerId}
-            playerUsername={playerUsername}
-            opponentUsername={opponentUsername}
-            selectedTime={selectedTime}
-            currentGameStatus={gameStatus}
-            gameInfo={gameInfo}
-            playerColour={playerColor}
-            currentTrun={currentTurn}
-          />
-        )}
+        <div className='w-full'>
+          {gameCode && (
+
+            <OnlineChessBoard
+              socket={socket}
+              gameCode={gameCode}
+              playerId={playerId}
+              playerUsername={playerUsername}
+              opponentUsername={opponentUsername}
+              selectedTime={selectedTime}
+              currentGameStatus={gameStatus}
+              gameInfo={gameInfo}
+              playerColour={playerColor}
+              currentTrun={currentTurn}
+            />
+          )}
+        </div>
       </div>
     </div>
   );

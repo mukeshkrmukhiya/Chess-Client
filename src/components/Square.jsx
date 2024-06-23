@@ -24,7 +24,7 @@ export const Square = ({ piece, color, rowIndex, colIndex, onClick, selected, la
 
   return (
     <div
-      className={`w-10 h-10 md:w-16 md:h-16 flex justify-center items-center cursor-pointer ${cellBackgroundColor}`}
+      className={`w-12 h-12 md:w-16 md:h-16 flex justify-center items-center cursor-pointer ${cellBackgroundColor}`}
       onClick={onClick}
     >
       {piece && <Piece piece={piece} color={color} />}

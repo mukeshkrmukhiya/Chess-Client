@@ -7,9 +7,9 @@ function Home() {
       <header className="bg-blue-500 text-white p-6">
         <h1 className="text-xl font-bold">Welcome Back! Play Chess Offline with your Friend</h1>
       </header>
-      <main className="p-6">
-        <Chessboard/>
-      </main>
+      <div className="">
+        <Chessboard />
+      </div>
     </div>
   );
 }

@@ -166,7 +166,7 @@ const ChessBoard = () => {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center h-screen bg-gray-800">
+    <div className=" flex flex-col items-center justify-center h-screen w-screen bg-gray-800">
       {showInitialTimeInput ? (
         <div className="mb-4">
           <input
@@ -196,7 +196,7 @@ const ChessBoard = () => {
         </div>
       )}
 
-      {/*pawn promotion */}
+
       <div className="grid grid-cols-8 relative">
         {board.map((row, rowIndex) =>
           row.map((cell, colIndex) => (

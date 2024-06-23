@@ -20,7 +20,7 @@ const Navbar = () => {
           <Link to="/play" className="text-gray-300 hover:text-white">OfflinePlay</Link>
           <Link to="/" className="text-gray-300 hover:text-white">Home</Link>
           <Link to="/profile" className="text-gray-300 hover:text-white">Profile</Link>
-          <Link to="/leaderboard" className="text-gray-300 hover:text-white">Leaderboard</Link>
+          {/* <Link to="/leaderboard" className="text-gray-300 hover:text-white">Leaderboard</Link> */}
           <Link to="/login" className="text-gray-300 hover:text-white">Login</Link>
           <Link to="/register" className="text-gray-300 hover:text-white">Registration</Link>
           <button className="text-gray-300 hover:text-white"
@@ -44,7 +44,7 @@ const Navbar = () => {
           <Link to="/onlineplay" className="block text-gray-300 hover:text-white px-4 py-2">OnlinePlay</Link>
           <Link to="/" className="block text-gray-300 hover:text-white px-4 py-2">Home</Link>
           <Link to="/profile" className="block text-gray-300 hover:text-white px-4 py-2">Profile</Link>
-          <Link to="puzzle" className="block text-gray-300 hover:text-white px-4 py-2">LeaderBoard</Link>
+          {/* <Link to="puzzle" className="block text-gray-300 hover:text-white px-4 py-2">LeaderBoard</Link> */}
           <Link to="/login" className="block text-gray-300 hover:text-white px-4 py-2">Login</Link>
           <Link to="/register" className="block text-gray-300 hover:text-white px-4 py-2">Register</Link>
           <Link to="/logout" className="block text-gray-300 hover:text-white px-4 py-2">Logout</Link>
