@@ -1,6 +1,6 @@
 // helpers.js
-// export const backendUrl = 'https://chess-backend-kf5d.onrender.com'
-export const backendUrl = 'http://localhost:5000'
+export const backendUrl = 'https://chess-backend-kf5d.onrender.com'
+// export const backendUrl = 'http://localhost:5000'
 // Function to initialize the chess board
 export const initializeBoard = () => {
   const emptyBoard = Array(8).fill(null).map(() => Array(8).fill(null));
