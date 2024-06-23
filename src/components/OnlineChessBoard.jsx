@@ -277,12 +277,13 @@ const OnlineChessBoard = ({
   selectedTime,
   currentGameStatus,
   gameInfo,
-  playerColor
+  playerColour,
+  currentTurn
 }) => {
   const [board, setBoard] = useState(initializeBoard());
   const [selectedPiece, setSelectedPiece] = useState(null);
   const [legalMoves, setLegalMoves] = useState([]);
-  const [turn, setTurn] = useState('white');
+  const [turn, setTurn] = useState(currentTurn);
   const [lastMove, setLastMove] = useState(null);
   const [whiteTime, setWhiteTime] = useState(selectedTime * 60 || 5 * 60);
   const [blackTime, setBlackTime] = useState(selectedTime * 60 || 5 * 60);
@@ -294,6 +295,8 @@ const OnlineChessBoard = ({
   const [currentPlayer, setCurrentPlayer] = useState(playerUsername);
   const [opponentPlayer, setOpponentPlayer] = useState(opponentUsername);
   const [gameStatus, setGameStatus] = useState(currentGameStatus);
+  const [playerColor, setPlayerColor] = useState(playerColour);
+
   const navigate = useNavigate();
 
   // Function to rotate the board
@@ -336,6 +339,7 @@ const OnlineChessBoard = ({
   useEffect(() => {
     socket.on('gameState', ({ players, currentTurn }) => {
       setTurn(currentTurn);
+      setPlayerColor(players[0].id === playerId?players[0].color: players[1].color);
       if (players && players.length >= 2) {
         const currentPlayer = players.find(player => player.id === playerId);
         const opponentPlayer = players.find(player => player.id !== playerId);
@@ -346,7 +350,7 @@ const OnlineChessBoard = ({
         }
       }
       setGameStatus(players.length > 1 ? 'started' : 'waiting');
-      console.log("player", players);
+      console.log("players oc,", players);
     });
 
     socket.on('moveMade', ({ move, playerId: moveMakerPlayerId, currentTurn }) => {
@@ -379,7 +383,7 @@ const OnlineChessBoard = ({
       socket.off('moveMade');
       socket.off('playerLeft');
     };
-  }, [socket]);
+  }, [socket, turn, playerColor]);
 
 
   useEffect(() => {

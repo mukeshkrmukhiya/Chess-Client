@@ -14,10 +14,10 @@ const Navbar = () => {
   return (
     <nav className="bg-gray-800 p-4">
       <div className="container mx-auto flex justify-between items-center">
-        <div className="text-white text-2xl font-bold">Chess Website</div>
+        <div className="text-white text-2xl font-bold">MukhiyaChessApp</div>
         <div className="hidden md:flex space-x-4">
           <Link to="/onlineplay" className="text-gray-300 hover:text-white">OnlinePlay</Link>
-          <Link to="/play" className="text-gray-300 hover:text-white">Play</Link>
+          <Link to="/play" className="text-gray-300 hover:text-white">OfflinePlay</Link>
           <Link to="/" className="text-gray-300 hover:text-white">Home</Link>
           <Link to="/profile" className="text-gray-300 hover:text-white">Profile</Link>
           <Link to="/leaderboard" className="text-gray-300 hover:text-white">Leaderboard</Link>

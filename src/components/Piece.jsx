@@ -11,7 +11,7 @@ import React from 'react';
   };
 
   return (
-    <div className={`text-3xl sm:text-2xl ${color === 'white' ? 'text-white' : 'text-black'}`}>
+    <div className={`text-2xl ${color === 'white' ? 'text-white' : 'text-black'}`}>
       {pieceIcons[piece]}
     </div>
   );
