@@ -36,10 +36,11 @@ const OnlinePlay = () => {
 
     socket.on('gameState', ({ players, currentTurn }) => {
       setCurrentTurn(currentTurn);
+      console.log("online play",currentTurn);
       const player = players.find(p => p.id === playerId);
       const opponent = players.find(p => p.id !== playerId);
       console.log("player play", players, currentTurn);
-      setPlayerColor(players[0].id === playerId ? players[0].color : 'black');
+      // setPlayerColor(players[0].id === playerId ? players[0].color : 'black');
 
       if (player) {
         setPlayerUsername(player.username);
@@ -70,6 +71,7 @@ const OnlinePlay = () => {
           setPlayerUsername(response.data.username);
           setGameStatus('waiting');
           setGameStarted(true);
+          // setCurrentTurn(currentTurn);
           console.log('Game created with username, Game Code:', response.data.username, response.data.gameCode);
           socket.emit('joinRoom', { gameCode: response.data.gameCode, playerId, username: response.data.username });
         } else {
@@ -87,6 +89,7 @@ const OnlinePlay = () => {
   };
 
   const handleJoinGame = async () => {
+    console.log('Join Game: ', currentTurn);
     if (joinGameCode && playerId) {
       setIsLoading(true);
       setError('');
@@ -144,7 +147,7 @@ const OnlinePlay = () => {
           Make sure you're logged in. Select a time to create a game and send the game code to your friend.
         </h1>
       </header>
-      <div className="md:p-6">
+      <div className="p-6">
         {error && <div className="text-red-500 mb-4">{error}</div>}
         {!gameStarted && (
           <>
@@ -201,23 +204,20 @@ const OnlinePlay = () => {
           </div>
         )}
 
-        <div className='w-full'>
-          {gameCode && (
-
-            <OnlineChessBoard
-              socket={socket}
-              gameCode={gameCode}
-              playerId={playerId}
-              playerUsername={playerUsername}
-              opponentUsername={opponentUsername}
-              selectedTime={selectedTime}
-              currentGameStatus={gameStatus}
-              gameInfo={gameInfo}
-              playerColour={playerColor}
-              currentTrun={currentTurn}
-            />
-          )}
-        </div>
+        {gameCode && (
+          <OnlineChessBoard
+            socket={socket}
+            gameCode={gameCode}
+            playerId={playerId}
+            playerUsername={playerUsername}
+            opponentUsername={opponentUsername}
+            selectedTime={selectedTime}
+            currentGameStatus={gameStatus}
+            gameInfo={gameInfo}
+            playerColour={playerColor}
+            currentTurn={currentTurn}
+          />
+        )}
       </div>
     </div>
   );

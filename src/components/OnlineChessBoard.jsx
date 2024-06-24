@@ -263,8 +263,7 @@
 
 
 import React, { useState, useEffect } from 'react';
-import { isLegalMove, shouldPromotePawn, isLegalMoveConsideringCheck, initializeBoard, isInCheck, isCheckmate } from './helper';
-import { Square } from './Square';
+import { isLegalMove, shouldPromotePawn, isLegalMoveConsideringCheck, initializeBoard, isInCheck, isCheckmate, canCastle, performCastling } from './helper';import { Square } from './Square';
 import PromotionDialog from './PromotionDialog';
 import { useNavigate } from 'react-router-dom';
 
@@ -299,45 +298,10 @@ const OnlineChessBoard = ({
 
   const navigate = useNavigate();
 
-  // Function to rotate the board
-  const rotateBoard = (board) => {
-    return board.slice().reverse().map(row => row.slice().reverse());
-  };
-
-  // Function to get the displayed board based on player color
-  const getDisplayedBoard = () => {
-    return playerColor === 'black' ? rotateBoard(board) : board;
-  };
-
-  // Function to convert clicked position to actual board position
-  const convertPosition = (row, col) => {
-    if (playerColor === 'black') {
-      return [7 - row, 7 - col];
-    }
-    return [row, col];
-  };
-
-  const handlePromotionSelect = (selectedPiece) => {
-    const { rowIndex, colIndex, pieceColor, fromRow, fromCol } = promotionChoice;
-    const newBoard = JSON.parse(JSON.stringify(board));
-    newBoard[rowIndex][colIndex] = { piece: selectedPiece, color: pieceColor };
-    newBoard[fromRow][fromCol] = null;
-    setBoard(newBoard);
-    setPromotionChoice(null);
-    setSelectedPiece(null);
-    setTurn(turn === 'white' ? 'black' : 'white');
-
-    // Emit the move to the server
-    const move = {
-      from: `${fromRow},${fromCol}`,
-      to: `${rowIndex},${colIndex}`,
-      piece: { piece: selectedPiece, color: pieceColor },
-    };
-    socket.emit('makeMove', { gameCode, move, playerId });
-  };
 
   useEffect(() => {
     socket.on('gameState', ({ players, currentTurn }) => {
+      // console.log(" gs ocb currturn playercolor",currentTurn, playerColor);
       setTurn(currentTurn);
       setPlayerColor(players[0].id === playerId?players[0].color: players[1].color);
       if (players && players.length >= 2) {
@@ -383,7 +347,47 @@ const OnlineChessBoard = ({
       socket.off('moveMade');
       socket.off('playerLeft');
     };
-  }, [socket, turn, playerColor]);
+  }, [socket, turn, playerColor, navigate, playerId]);
+
+  // Function to rotate the board
+  const rotateBoard = (board) => {
+    return board.slice().reverse().map(row => row.slice().reverse());
+  };
+
+  // Function to get the displayed board based on player color
+  const getDisplayedBoard = () => {
+    // console.log("ocb currturn playercolor",currentTurn, playerColor);
+    return playerColor === 'black' ? rotateBoard(board) : board;
+  };
+
+  // Function to convert clicked position to actual board position
+  const convertPosition = (row, col) => {
+    if (playerColor === 'black') {
+      return [7 - row, 7 - col];
+    }
+    return [row, col];
+  };
+
+  const handlePromotionSelect = (selectedPiece) => {
+    const { rowIndex, colIndex, pieceColor, fromRow, fromCol } = promotionChoice;
+    const newBoard = JSON.parse(JSON.stringify(board));
+    newBoard[rowIndex][colIndex] = { piece: selectedPiece, color: pieceColor };
+    newBoard[fromRow][fromCol] = null;
+    setBoard(newBoard);
+    setPromotionChoice(null);
+    setSelectedPiece(null);
+    setTurn(turn === 'white' ? 'black' : 'white');
+
+    // Emit the move to the server
+    const move = {
+      from: `${fromRow},${fromCol}`,
+      to: `${rowIndex},${colIndex}`,
+      piece: { piece: selectedPiece, color: pieceColor },
+    };
+    socket.emit('makeMove', { gameCode, move, playerId });
+  };
+
+
 
 
   useEffect(() => {
@@ -433,57 +437,158 @@ const OnlineChessBoard = ({
   const handleCellClick = (rowIndex, colIndex) => {
     const [actualRow, actualCol] = convertPosition(rowIndex, colIndex);
     const piece = board[actualRow] && board[actualRow][actualCol];
-
+  
     if (turn !== playerColor || !opponentPlayer) {
       console.log("Not your turn");
       return;
     }
-
+  
     if (piece && piece.color === playerColor) {
+      // Selecting a piece of the current player's color
       setSelectedPiece({ piece, fromRow: actualRow, fromCol: actualCol });
       const moves = [];
       for (let i = 0; i < 8; i++) {
         for (let j = 0; j < 8; j++) {
-          if (isLegalMove(board, piece, actualRow, actualCol, i, j, lastMove) &&
-            isLegalMoveConsideringCheck(board, piece, actualRow, actualCol, i, j, lastMove)) {
-            moves.push({ row: i, col: j });
+          if (piece.piece === 'K') {
+            // For the king, check both regular moves and castling
+            if (
+              (isLegalMove(board, piece, actualRow, actualCol, i, j, lastMove) &&
+              isLegalMoveConsideringCheck(board, piece, actualRow, actualCol, i, j, lastMove)) ||
+              canCastle(board, actualRow, actualCol, i, j, playerColor)
+            ) {
+              moves.push({ row: i, col: j });
+            }
+          } else {
+            // For other pieces, check regular moves
+            if (
+              isLegalMove(board, piece, actualRow, actualCol, i, j, lastMove) &&
+              isLegalMoveConsideringCheck(board, piece, actualRow, actualCol, i, j, lastMove)
+            ) {
+              moves.push({ row: i, col: j });
+            }
           }
         }
       }
       setLegalMoves(moves);
     } else if (selectedPiece) {
+      // Attempting to move the selected piece
       const { piece, fromRow, fromCol } = selectedPiece;
       if (
-        isLegalMove(board, piece, fromRow, fromCol, actualRow, actualCol, lastMove) &&
-        isLegalMoveConsideringCheck(board, piece, fromRow, fromCol, actualRow, actualCol, lastMove)
+        (isLegalMove(board, piece, fromRow, fromCol, actualRow, actualCol, lastMove) &&
+        isLegalMoveConsideringCheck(board, piece, fromRow, fromCol, actualRow, actualCol, lastMove)) ||
+        (piece.piece === 'K' && canCastle(board, fromRow, fromCol, actualRow, actualCol, playerColor))
       ) {
-        const newBoard = JSON.parse(JSON.stringify(board));
+        // Valid move
+        let newBoard;
+        if (piece.piece === 'K' && Math.abs(fromCol - actualCol) === 2) {
+          // Castling move
+          newBoard = performCastling(board, fromRow, fromCol, actualRow, actualCol);
+        } else {
+          newBoard = JSON.parse(JSON.stringify(board));
+          newBoard[actualRow][actualCol] = piece;
+          newBoard[fromRow][fromCol] = null;
+        }
+  
         const move = {
           from: `${fromRow},${fromCol}`,
           to: `${actualRow},${actualCol}`,
           piece: piece,
+          isCastling: piece.piece === 'K' && Math.abs(fromCol - actualCol) === 2
         };
-
+  
         if (shouldPromotePawn(piece, actualRow)) {
           setPromotionChoice({ rowIndex: actualRow, colIndex: actualCol, pieceColor: piece.color, fromRow, fromCol });
         } else {
-          newBoard[actualRow][actualCol] = piece;
-          newBoard[fromRow][fromCol] = null;
           setBoard(newBoard);
           setSelectedPiece(null);
           setLegalMoves([]);
-
+  
           socket.emit('makeMove', { gameCode, move, playerId });
           setTurn(turn === 'white' ? 'black' : 'white');
         }
       } else {
+        // Invalid move, reset selection
         setSelectedPiece(null);
         setLegalMoves([]);
       }
+    } else {
+      // Clicking on an empty cell or opponent's piece when no piece is selected
+      setSelectedPiece(null);
+      setLegalMoves([]);
     }
   };
+  // const handleCellClick = (rowIndex, colIndex) => {
+  //   const [actualRow, actualCol] = convertPosition(rowIndex, colIndex);
+  //   const piece = board[actualRow] && board[actualRow][actualCol];
 
+  //   if (turn !== playerColor || !opponentPlayer) {
+  //     console.log("Not your turn");
+  //     return;
+  //   }
 
+  //   if (piece && piece.color === playerColor) {
+  //     // Selecting a piece of the current player's color
+  //     setSelectedPiece({ piece, fromRow: actualRow, fromCol: actualCol });
+  //     const moves = [];
+  //     for (let i = 0; i < 8; i++) {
+  //       for (let j = 0; j < 8; j++) {
+  //         if (
+  //           (isLegalMove(board, piece, actualRow, actualCol, i, j, lastMove) &&
+  //           isLegalMoveConsideringCheck(board, piece, actualRow, actualCol, i, j, lastMove)) ||
+  //           (piece.piece === 'K' )
+  //         ) {
+  //           moves.push({ row: i, col: j });
+  //         }
+  //       }
+  //     }
+  //     setLegalMoves(moves);
+  //   } else if (selectedPiece) {
+  //     // Attempting to move the selected piece
+  //     const { piece, fromRow, fromCol } = selectedPiece;
+  //     if (
+  //       (isLegalMove(board, piece, fromRow, fromCol, actualRow, actualCol, lastMove) &&
+  //       isLegalMoveConsideringCheck(board, piece, fromRow, fromCol, actualRow, actualCol, lastMove)) ||
+  //       (piece.piece === 'K' && canCastle(board, fromRow, fromCol, actualRow, actualCol, playerColor))
+  //     ) {
+  //       // Valid move
+  //       let newBoard;
+  //       if (piece.piece === 'K' && Math.abs(fromCol - actualCol) === 2) {
+  //         // Castling move
+  //         newBoard = performCastling(board, fromRow, fromCol, actualRow, actualCol);
+  //       } else {
+  //         newBoard = JSON.parse(JSON.stringify(board));
+  //         newBoard[actualRow][actualCol] = piece;
+  //         newBoard[fromRow][fromCol] = null;
+  //       }
+
+  //       const move = {
+  //         from: `${fromRow},${fromCol}`,
+  //         to: `${actualRow},${actualCol}`,
+  //         piece: piece,
+  //         isCastling: piece.piece === 'K' && Math.abs(fromCol - actualCol) === 2
+  //       };
+
+  //       if (shouldPromotePawn(piece, actualRow)) {
+  //         setPromotionChoice({ rowIndex: actualRow, colIndex: actualCol, pieceColor: piece.color, fromRow, fromCol });
+  //       } else {
+  //         setBoard(newBoard);
+  //         setSelectedPiece(null);
+  //         setLegalMoves([]);
+
+  //         socket.emit('makeMove', { gameCode, move, playerId });
+  //         setTurn(turn === 'white' ? 'black' : 'white');
+  //       }
+  //     } else {
+  //       // Invalid move, reset selection
+  //       setSelectedPiece(null);
+  //       setLegalMoves([]);
+  //     }
+  //   } else {
+  //     // Clicking on an empty cell or opponent's piece when no piece is selected
+  //     setSelectedPiece(null);
+  //     setLegalMoves([]);
+  //   }
+  // };
 
   const handleGameOver = (winnerColor, reason) => {
     setGameOver(true);
@@ -574,21 +679,30 @@ const OnlineChessBoard = ({
       </div>
 
       {modalVisible && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4"
-          onClick={() => toggleModal(modalVisible)}>
-          <div className="bg-white p-6 rounded-lg max-w-sm w-full">
-            <p className="text-lg font-bold mb-4 text-center">
-              {winner === 'Draw' ? 'The game is a draw.' : `${winner} wins by ${gameOverReason}`}
-            </p>
+        <div className="fixed top-0 left-0 w-full h-full bg-black bg-opacity-50 flex justify-center items-center"
+        onClick={() => {
+          setModalVisible(false) } } >
+          <div className="bg-white p-8 rounded-lg" >
+            <div className="text-center">
+              <p className="text-xl font-bold mb-1">
+                {winner === 'Draw' ? 'The game is a draw.' : `${winner} wins`}
+              </p>
+              {winner !== 'Draw' && (
+                <p className="text-lg  sm:text-sm text-gray-500 mb-2">{`by ${gameOverReason}`}</p>
+              )}
+            </div>
             <button
-              onClick={() => window.location.reload()}
-              className="w-full bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+              onClick={() => {
+                window.location.reload();
+              }}
+              className="bg-blue-500 text-white px-4 py-2 rounded"
             >
-              New Game
+               New Game
             </button>
           </div>
         </div>
       )}
+
     </div>
   );
 };
