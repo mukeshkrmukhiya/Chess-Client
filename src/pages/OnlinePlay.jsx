@@ -23,12 +23,16 @@ const OnlinePlay = () => {
   const [currentTurn, setCurrentTurn] = useState('white');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isSearchingRandom, setIsSearchingRandom] = useState(false);
+  const [searchStatus, setSearchStatus] = useState('');
 
   const navigate = useNavigate();
 
   useEffect(() => {
+    
+    const token  = localStorage.getItem('authToken');
     const storedPlayerId = localStorage.getItem('playerId');
-    if (storedPlayerId) {
+    if (storedPlayerId && token) {
       setPlayerId(storedPlayerId);
     } else {
       navigate('/login');
@@ -36,25 +40,71 @@ const OnlinePlay = () => {
 
     socket.on('gameState', ({ players, currentTurn }) => {
       setCurrentTurn(currentTurn);
-      console.log("online play",currentTurn);
       const player = players.find(p => p.id === playerId);
       const opponent = players.find(p => p.id !== playerId);
-      console.log("player play", players, currentTurn);
-      // setPlayerColor(players[0].id === playerId ? players[0].color : 'black');
-
+      
       if (player) {
         setPlayerUsername(player.username);
+        setPlayerColor(player.color);
         if (opponent) {
           setOpponentUsername(opponent.username);
-          setGameStatus('waiting');
+          setGameStatus('started');
+          setGameStarted(true);
+          setSearchStatus('');
         }
       }
     });
 
+    socket.on('opponentJoined', ({ gameCode }) => {
+      console.log('Opponent joined the game:', gameCode);
+      setSearchStatus('Opponent joined! Starting game...');
+      // The gameState event will handle setting up the game
+    });
+
     return () => {
       socket.off('gameState');
+      socket.off('opponentJoined');
     };
-  }, [navigate, socket, playerId]);
+  }, [navigate, playerId]);
+
+  const handleRandomMatch = async () => {
+    if (playerId && selectedTime) {
+      setIsLoading(true);
+      setError('');
+      setIsSearchingRandom(true);
+      setSearchStatus('Searching for an opponent...');
+      try {
+        const response = await axios.post(`${backendUrl}/api/games/random-match`, {
+          playerId,
+          timeControl: selectedTime
+        });
+
+        if (response.data && response.data.gameCode) {
+          setGameCode(response.data.gameCode);
+          setPlayerUsername(response.data.username);
+          setPlayerColor(response.data.color);
+          setSearchStatus('Game found! Waiting for opponent...');
+          
+          socket.emit('joinRoom', { 
+            gameCode: response.data.gameCode, 
+            playerId, 
+            username: response.data.username 
+          });
+        } else {
+          throw new Error('Invalid response from server');
+        }
+      } catch (error) {
+        console.error('Error joining random game:', error);
+        setError('Failed to join random game. Please try again.');
+        setSearchStatus('');
+      } finally {
+        setIsLoading(false);
+        setIsSearchingRandom(false);
+      }
+    } else {
+      setError('Please select a time control before searching for a random game.');
+    }
+  };
 
   const handleCreateGame = async () => {
     if (playerId && selectedTime) {
@@ -140,19 +190,20 @@ const OnlinePlay = () => {
       });
   };
 
+
   return (
     <div className="text-center">
-      <header className="bg-blue-500 text-white p-4">
-        <h1 className=" md:text-xl text-lg md:fond-bold ">
-          Make sure you're logged in. Select a time to create a game and send the game code to your friend.
+      <header className="bg-blue-500 text-white md:p-4">
+        <h1 className="md:text-xl text-lg md:font-bold">
+          Online Chess: Create a game, join a game, or play with a random opponent
         </h1>
       </header>
-      <div className="p-6">
+      <div className="md:p-6">
         {error && <div className="text-red-500 mb-4">{error}</div>}
         {!gameStarted && (
           <>
             <div className="flex flex-col items-center mb-4">
-              <h3 className="mb-2">Select Time:</h3>
+              <h3 className="mb-2">Select Time Control:</h3>
               <div className="flex space-x-2 mb-4">
                 {[10, 15, 30].map(time => (
                   <button
@@ -165,12 +216,20 @@ const OnlinePlay = () => {
                 ))}
               </div>
               <button
-                className="bg-green-500 text-white px-4 py-2 rounded disabled:bg-green-300"
+                className="bg-green-500 text-white px-4 py-2 rounded disabled:bg-green-300 mb-2"
                 onClick={handleCreateGame}
                 disabled={isLoading || !selectedTime}
               >
                 {isLoading ? 'Creating...' : 'Create Game'}
               </button>
+              <button
+                className="bg-blue-500 text-white px-4 py-2 rounded disabled:bg-blue-300"
+                onClick={handleRandomMatch}
+                disabled={isLoading || !selectedTime || isSearchingRandom}
+              >
+                {isSearchingRandom ? 'Searching...' : 'Play with Random Opponent'}
+              </button>
+              {searchStatus && <p className="mt-2 text-blue-600">{searchStatus}</p>}
             </div>
             <div className="flex flex-col items-center mb-4">
               <input
@@ -188,9 +247,9 @@ const OnlinePlay = () => {
                 {isLoading ? 'Joining...' : 'Join Game'}
               </button>
             </div>
+            
           </>
         )}
-
         {gameCode && (
           <div className="mt-4 flex items-center justify-center">
             <p className="mr-2">Game Code: <span className="font-bold">{gameCode}</span></p>
@@ -203,8 +262,7 @@ const OnlinePlay = () => {
             </button>
           </div>
         )}
-
-        {gameCode && (
+        {gameStarted && (
           <OnlineChessBoard
             socket={socket}
             gameCode={gameCode}

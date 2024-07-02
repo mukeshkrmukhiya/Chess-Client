@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect,useRef  } from 'react';
 import { isLegalMove, isLegalMoveConsideringCheck, initializeBoard, shouldPromotePawn, isInCheck, isCheckmate } from './helper';
 import { Square } from './Square';
 import PromotionDialog from './PromotionDialog';
 import { useNavigate } from 'react-router-dom';
-
 const ChessBoard = () => {
   const navigate = useNavigate();
   const [board, setBoard] = useState(initializeBoard());
@@ -20,6 +19,7 @@ const ChessBoard = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [promotionChoice, setPromotionChoice] = useState(null);
   const [gameOverReason, setGameOverReason] = useState(null);
+  const moveAudioRef = useRef(new Audio('assets/audio/move-sound.mp3'));
 
   const handlePromotionSelect = (selectedPiece) => {
     const { rowIndex, colIndex, pieceColor, fromRow, fromCol } = promotionChoice;
@@ -133,6 +133,8 @@ const ChessBoard = () => {
           setLegalMoves([]);
           setTurn(turn === 'white' ? 'black' : 'white');
           setLastMove({ piece, fromRow, fromCol, toRow: rowIndex, toCol: colIndex });
+          // Play the move sound
+          moveAudioRef.current.play().catch(e => console.error("Error playing audio:", e));
         }
       } else {
         // Select another piece of the same color if clicked on another piece
