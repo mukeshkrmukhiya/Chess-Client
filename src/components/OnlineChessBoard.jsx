@@ -47,7 +47,25 @@ const OnlineChessBoard = ({
 
   const navigate = useNavigate();
 
-
+  const applyMove = (board, move) => {
+    const { from, to, piece, isCastling, rookMove } = move;
+    const [fromRow, fromCol] = from.split(',').map(Number);
+    const [toRow, toCol] = to.split(',').map(Number);
+  
+    const newBoard = JSON.parse(JSON.stringify(board));
+    newBoard[toRow][toCol] = piece;
+    newBoard[fromRow][fromCol] = null;
+  
+    if (isCastling && rookMove) {
+      const [rookFromRow, rookFromCol] = rookMove.from.split(',').map(Number);
+      const [rookToRow, rookToCol] = rookMove.to.split(',').map(Number);
+      newBoard[rookToRow][rookToCol] = newBoard[rookFromRow][rookFromCol];
+      newBoard[rookFromRow][rookFromCol] = null;
+    }
+  
+    return newBoard;
+  };
+  
   useEffect(() => {
     socket.on('gameState', ({ players, currentTurn }) => {
       // console.log(" gs ocb currturn playercolor",currentTurn, playerColor);
@@ -67,23 +85,35 @@ const OnlineChessBoard = ({
     });
 
     socket.on('moveMade', ({ move, playerId: moveMakerPlayerId, currentTurn }) => {
-      console.log('Move made:', move, 'by', moveMakerPlayerId, 'current turn:', currentTurn);
-      const { from, to, piece } = move;
-      const [fromRow, fromCol] = from.split(',').map(Number);
-      const [toRow, toCol] = to.split(',').map(Number);
+      console.log('Move received:', move, 'by', moveMakerPlayerId, 'current turn:', currentTurn);
+      
+      setBoard(prevBoard => applyMove(prevBoard, move));
 
-      setBoard(prevBoard => {
-        const newBoard = JSON.parse(JSON.stringify(prevBoard));
-        newBoard[toRow][toCol] = piece;
-        newBoard[fromRow][fromCol] = null;
-        return newBoard;
-      });
-
-      setTurn(currentTurn);
+      const [fromRow, fromCol] = move.from.split(',').map(Number);
+      const [toRow, toCol] = move.to.split(',').map(Number);
       setLastMove({ fromRow, fromCol, toRow, toCol });
+      setTurn(currentTurn);
       setSelectedPiece(null);
       setLegalMoves([]);
     });
+    // socket.on('moveMade', ({ move, playerId: moveMakerPlayerId, currentTurn }) => {
+    //   console.log('Move made:', move, 'by', moveMakerPlayerId, 'current turn:', currentTurn);
+    //   const { from, to, piece } = move;
+    //   const [fromRow, fromCol] = from.split(',').map(Number);
+    //   const [toRow, toCol] = to.split(',').map(Number);
+
+    //   setBoard(prevBoard => {
+    //     const newBoard = JSON.parse(JSON.stringify(prevBoard));
+    //     newBoard[toRow][toCol] = piece;
+    //     newBoard[fromRow][fromCol] = null;
+    //     return newBoard;
+    //   });
+
+    //   setTurn(currentTurn);
+    //   setLastMove({ fromRow, fromCol, toRow, toCol });
+    //   setSelectedPiece(null);
+    //   setLegalMoves([]);
+    // });
 
     socket.on('playerLeft', ({ playerId: leftPlayerId }) => {
       if (leftPlayerId !== playerId) {
@@ -183,15 +213,16 @@ const OnlineChessBoard = ({
     return () => clearInterval(timer);
   }, [gameOver, gameStatus, turn]);
 
+
   const handleCellClick = (rowIndex, colIndex) => {
     const [actualRow, actualCol] = convertPosition(rowIndex, colIndex);
     const piece = board[actualRow] && board[actualRow][actualCol];
-
+  
     if (turn !== playerColor || !opponentPlayer) {
       console.log("Not your turn");
       return;
     }
-
+  
     if (piece && piece.color === playerColor) {
       // Selecting a piece of the current player's color
       setSelectedPiece({ piece, fromRow: actualRow, fromCol: actualCol });
@@ -199,7 +230,6 @@ const OnlineChessBoard = ({
       for (let i = 0; i < 8; i++) {
         for (let j = 0; j < 8; j++) {
           if (piece.piece === 'K') {
-            // For the king, check both regular moves and castling
             if (
               (isLegalMove(board, piece, actualRow, actualCol, i, j, lastMove) &&
                 isLegalMoveConsideringCheck(board, piece, actualRow, actualCol, i, j, lastMove)) ||
@@ -208,7 +238,6 @@ const OnlineChessBoard = ({
               moves.push({ row: i, col: j });
             }
           } else {
-            // For other pieces, check regular moves
             if (
               isLegalMove(board, piece, actualRow, actualCol, i, j, lastMove) &&
               isLegalMoveConsideringCheck(board, piece, actualRow, actualCol, i, j, lastMove)
@@ -220,31 +249,39 @@ const OnlineChessBoard = ({
       }
       setLegalMoves(moves);
     } else if (selectedPiece) {
-      // Attempting to move the selected piece
       const { piece, fromRow, fromCol } = selectedPiece;
       if (
         (isLegalMove(board, piece, fromRow, fromCol, actualRow, actualCol, lastMove) &&
           isLegalMoveConsideringCheck(board, piece, fromRow, fromCol, actualRow, actualCol, lastMove)) ||
         (piece.piece === 'K' && canCastle(board, fromRow, fromCol, actualRow, actualCol, playerColor))
       ) {
-        // Valid move
+        let move = {
+          from: `${fromRow},${fromCol}`,
+          to: `${actualRow},${actualCol}`,
+          piece: piece,
+          isCastling: false
+        };
+  
         let newBoard;
+  
         if (piece.piece === 'K' && Math.abs(fromCol - actualCol) === 2) {
           // Castling move
-          newBoard = performCastling(board, fromRow, fromCol, actualRow, actualCol);
+          const castlingResult = performCastling(board, fromRow, fromCol, actualRow, actualCol);
+          if (castlingResult) {
+            newBoard = castlingResult.newBoard;
+            move.isCastling = true;
+            move.rookMove = castlingResult.rookMove;
+          } else {
+            console.error('Castling failed');
+            return;
+          }
         } else {
+          // Regular move
           newBoard = JSON.parse(JSON.stringify(board));
           newBoard[actualRow][actualCol] = piece;
           newBoard[fromRow][fromCol] = null;
         }
-
-        const move = {
-          from: `${fromRow},${fromCol}`,
-          to: `${actualRow},${actualCol}`,
-          piece: piece,
-          isCastling: piece.piece === 'K' && Math.abs(fromCol - actualCol) === 2
-        };
-
+  
         if (shouldPromotePawn(piece, actualRow)) {
           setPromotionChoice({ rowIndex: actualRow, colIndex: actualCol, pieceColor: piece.color, fromRow, fromCol });
         } else {
@@ -252,7 +289,7 @@ const OnlineChessBoard = ({
           setSelectedPiece(null);
           setLegalMoves([]);
           moveAudioRef.current.play().catch(e => console.error("Error playing audio:", e));
-
+  
           socket.emit('makeMove', { gameCode, move, playerId });
           setTurn(turn === 'white' ? 'black' : 'white');
         }
@@ -267,6 +304,104 @@ const OnlineChessBoard = ({
       setLegalMoves([]);
     }
   };
+
+  // const handleCellClick = (rowIndex, colIndex) => {
+  //   const [actualRow, actualCol] = convertPosition(rowIndex, colIndex);
+  //   const piece = board[actualRow] && board[actualRow][actualCol];
+  
+  //   if (turn !== playerColor || !opponentPlayer) {
+  //     console.log("Not your turn");
+  //     return;
+  //   }
+  
+  //   if (piece && piece.color === playerColor) {
+  //     // Selecting a piece of the current player's color
+  //     setSelectedPiece({ piece, fromRow: actualRow, fromCol: actualCol });
+  //     const moves = [];
+  //     for (let i = 0; i < 8; i++) {
+  //       for (let j = 0; j < 8; j++) {
+  //         if (piece.piece === 'K') {
+  //           // For the king, check both regular moves and castling
+  //           if (
+  //             (isLegalMove(board, piece, actualRow, actualCol, i, j, lastMove) &&
+  //               isLegalMoveConsideringCheck(board, piece, actualRow, actualCol, i, j, lastMove)) ||
+  //             canCastle(board, actualRow, actualCol, i, j, playerColor)
+  //           ) {
+  //             moves.push({ row: i, col: j });
+  //           }
+  //         } else {
+  //           // For other pieces, check regular moves
+  //           if (
+  //             isLegalMove(board, piece, actualRow, actualCol, i, j, lastMove) &&
+  //             isLegalMoveConsideringCheck(board, piece, actualRow, actualCol, i, j, lastMove)
+  //           ) {
+  //             moves.push({ row: i, col: j });
+  //           }
+  //         }
+  //       }
+  //     }
+  //     setLegalMoves(moves);
+  //   } else if (selectedPiece) {
+  //     // Attempting to move the selected piece
+  //     const { piece, fromRow, fromCol } = selectedPiece;
+  //     if (
+  //       (isLegalMove(board, piece, fromRow, fromCol, actualRow, actualCol, lastMove) &&
+  //         isLegalMoveConsideringCheck(board, piece, fromRow, fromCol, actualRow, actualCol, lastMove)) ||
+  //       (piece.piece === 'K' && canCastle(board, fromRow, fromCol, actualRow, actualCol, playerColor))
+  //     ) {
+  //       // Valid move
+  //       let newBoard;
+  //       let move;
+  
+  //       if (piece.piece === 'K' && Math.abs(fromCol - actualCol) === 2) {
+  //         // Castling move
+  //         const { newBoard: castlingBoard, rookMove } = performCastling(board, fromRow, fromCol, actualRow, actualCol);
+  //         newBoard = castlingBoard;
+  
+  //         move = {
+  //           from: `${fromRow},${fromCol}`,
+  //           to: `${actualRow},${actualCol}`,
+  //           piece: piece,
+  //           isCastling: true,
+  //           rookMove: rookMove // Include the rook move information
+  //         };
+  //       } else {
+  //         // Regular move
+  //         newBoard = JSON.parse(JSON.stringify(board));
+  //         newBoard[actualRow][actualCol] = piece;
+  //         newBoard[fromRow][fromCol] = null;
+  
+  //         move = {
+  //           from: `${fromRow},${fromCol}`,
+  //           to: `${actualRow},${actualCol}`,
+  //           piece: piece,
+  //           isCastling: false
+  //         };
+  //       }
+  
+  //       if (shouldPromotePawn(piece, actualRow)) {
+  //         setPromotionChoice({ rowIndex: actualRow, colIndex: actualCol, pieceColor: piece.color, fromRow, fromCol });
+  //       } else {
+  //         setBoard(newBoard);
+  //         setSelectedPiece(null);
+  //         setLegalMoves([]);
+  //         moveAudioRef.current.play().catch(e => console.error("Error playing audio:", e));
+  
+  //         socket.emit('makeMove', { gameCode, move, playerId });
+  //         setTurn(turn === 'white' ? 'black' : 'white');
+  //       }
+  //     } else {
+  //       // Invalid move, reset selection
+  //       setSelectedPiece(null);
+  //       setLegalMoves([]);
+  //     }
+  //   } else {
+  //     // Clicking on an empty cell or opponent's piece when no piece is selected
+  //     setSelectedPiece(null);
+  //     setLegalMoves([]);
+  //   }
+  // };
+ 
 
   useEffect(() => {
     socket.on('rematchRequested', ({ requestingPlayerId }) => {
@@ -372,7 +507,7 @@ const OnlineChessBoard = ({
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen w-full bg-gray-900 p-4">
+    <div className="flex flex-col items-center justify-center min-h-screen w-full bg-gray-900  sm:p-4">
       <div className="w-full max-w-4xl bg-gray-800 rounded-lg shadow-lg overflow-hidden">
         {/* Header */}
         <div className="bg-gray-700 p-4 flex justify-between items-center">
@@ -413,39 +548,39 @@ const OnlineChessBoard = ({
       </div>
       
       {/* Chess Board */}
-      <div className="sm:w-3/4 p-4">
-        <div className="aspect-square">
-          <div className="grid grid-cols-8 bg-gray-600">
-            {getDisplayedBoard().map((row, rowIndex) =>
-              row.map((cell, colIndex) => (
-                <Square
-                  key={`${rowIndex}-${colIndex}`}
-                  piece={cell ? cell.piece : null}
-                  color={cell ? cell.color : null}
-                  rowIndex={rowIndex}
-                  colIndex={colIndex}
-                  onClick={() => handleCellClick(rowIndex, colIndex)}
-                  selected={
-                    selectedPiece &&
-                    ((playerColor === 'white' && selectedPiece.fromRow === rowIndex && selectedPiece.fromCol === colIndex) ||
-                      (playerColor === 'black' && selectedPiece.fromRow === 7 - rowIndex && selectedPiece.fromCol === 7 - colIndex))
-                  }
-                  lastMove={lastMove && {
-                    fromRow: playerColor === 'black' ? 7 - lastMove.fromRow : lastMove.fromRow,
-                    fromCol: playerColor === 'black' ? 7 - lastMove.fromCol : lastMove.fromCol,
-                    toRow: playerColor === 'black' ? 7 - lastMove.toRow : lastMove.toRow,
-                    toCol: playerColor === 'black' ? 7 - lastMove.toCol : lastMove.toCol,
-                  }}
-                  highlight={legalMoves.some(move =>
-                    (playerColor === 'white' && move.row === rowIndex && move.col === colIndex) ||
-                    (playerColor === 'black' && move.row === 7 - rowIndex && move.col === 7 - colIndex)
-                  )}
-                />
-              ))
+      <div className="aspect-square sm:w-3/4 sm:p-4">
+  <div className="aspect-square">
+    <div className="grid grid-cols-8 gap-0 bg-gray-600">
+      {getDisplayedBoard().map((row, rowIndex) =>
+        row.map((cell, colIndex) => (
+          <Square
+            key={`${rowIndex}-${colIndex}`}
+            piece={cell ? cell.piece : null}
+            color={cell ? cell.color : null}
+            rowIndex={rowIndex}
+            colIndex={colIndex}
+            onClick={() => handleCellClick(rowIndex, colIndex)}
+            selected={
+              selectedPiece &&
+              ((playerColor === 'white' && selectedPiece.fromRow === rowIndex && selectedPiece.fromCol === colIndex) ||
+                (playerColor === 'black' && selectedPiece.fromRow === 7 - rowIndex && selectedPiece.fromCol === 7 - colIndex))
+            }
+            lastMove={lastMove && {
+              fromRow: playerColor === 'black' ? 7 - lastMove.fromRow : lastMove.fromRow,
+              fromCol: playerColor === 'black' ? 7 - lastMove.fromCol : lastMove.fromCol,
+              toRow: playerColor === 'black' ? 7 - lastMove.toRow : lastMove.toRow,
+              toCol: playerColor === 'black' ? 7 - lastMove.toCol : lastMove.toCol,
+            }}
+            highlight={legalMoves.some(move =>
+              (playerColor === 'white' && move.row === rowIndex && move.col === colIndex) ||
+              (playerColor === 'black' && move.row === 7 - rowIndex && move.col === 7 - colIndex)
             )}
-          </div>
-        </div>
-      </div>
+          />
+        ))
+      )}
+    </div>
+  </div>
+</div>
     </div>
       </div>
 
@@ -477,8 +612,92 @@ const OnlineChessBoard = ({
 };
 
 
-
-
-
-
 export default OnlineChessBoard;
+
+
+
+ // const handleCellClick = (rowIndex, colIndex) => {
+  //   const [actualRow, actualCol] = convertPosition(rowIndex, colIndex);
+  //   const piece = board[actualRow] && board[actualRow][actualCol];
+
+  //   if (turn !== playerColor || !opponentPlayer) {
+  //     console.log("Not your turn");
+  //     return;
+  //   }
+
+  //   if (piece && piece.color === playerColor) {
+  //     // Selecting a piece of the current player's color
+  //     setSelectedPiece({ piece, fromRow: actualRow, fromCol: actualCol });
+  //     const moves = [];
+  //     for (let i = 0; i < 8; i++) {
+  //       for (let j = 0; j < 8; j++) {
+  //         if (piece.piece === 'K') {
+  //           // For the king, check both regular moves and castling
+  //           if (
+  //             (isLegalMove(board, piece, actualRow, actualCol, i, j, lastMove) &&
+  //               isLegalMoveConsideringCheck(board, piece, actualRow, actualCol, i, j, lastMove)) ||
+  //             canCastle(board, actualRow, actualCol, i, j, playerColor)
+  //           ) {
+  //             moves.push({ row: i, col: j });
+  //           }
+  //         } else {
+  //           // For other pieces, check regular moves
+  //           if (
+  //             isLegalMove(board, piece, actualRow, actualCol, i, j, lastMove) &&
+  //             isLegalMoveConsideringCheck(board, piece, actualRow, actualCol, i, j, lastMove)
+  //           ) {
+  //             moves.push({ row: i, col: j });
+  //           }
+  //         }
+  //       }
+  //     }
+  //     setLegalMoves(moves);
+  //   } else if (selectedPiece) {
+  //     // Attempting to move the selected piece
+  //     const { piece, fromRow, fromCol } = selectedPiece;
+  //     if (
+  //       (isLegalMove(board, piece, fromRow, fromCol, actualRow, actualCol, lastMove) &&
+  //         isLegalMoveConsideringCheck(board, piece, fromRow, fromCol, actualRow, actualCol, lastMove)) ||
+  //       (piece.piece === 'K' && canCastle(board, fromRow, fromCol, actualRow, actualCol, playerColor))
+  //     ) {
+  //       // Valid move
+  //       let newBoard;
+  //       if (piece.piece === 'K' && Math.abs(fromCol - actualCol) === 2) {
+  //         // Castling move
+  //         newBoard = performCastling(board, fromRow, fromCol, actualRow, actualCol);
+  //       } else {
+  //         newBoard = JSON.parse(JSON.stringify(board));
+  //         newBoard[actualRow][actualCol] = piece;
+  //         newBoard[fromRow][fromCol] = null;
+  //       }
+
+  //       const move = {
+  //         from: `${fromRow},${fromCol}`,
+  //         to: `${actualRow},${actualCol}`,
+  //         piece: piece,
+  //         isCastling: piece.piece === 'K' && Math.abs(fromCol - actualCol) === 2,
+          
+  //       };
+
+  //       if (shouldPromotePawn(piece, actualRow)) {
+  //         setPromotionChoice({ rowIndex: actualRow, colIndex: actualCol, pieceColor: piece.color, fromRow, fromCol });
+  //       } else {
+  //         setBoard(newBoard);
+  //         setSelectedPiece(null);
+  //         setLegalMoves([]);
+  //         moveAudioRef.current.play().catch(e => console.error("Error playing audio:", e));
+
+  //         socket.emit('makeMove', { gameCode, move, playerId });
+  //         setTurn(turn === 'white' ? 'black' : 'white');
+  //       }
+  //     } else {
+  //       // Invalid move, reset selection
+  //       setSelectedPiece(null);
+  //       setLegalMoves([]);
+  //     }
+  //   } else {
+  //     // Clicking on an empty cell or opponent's piece when no piece is selected
+  //     setSelectedPiece(null);
+  //     setLegalMoves([]);
+  //   }
+  // };

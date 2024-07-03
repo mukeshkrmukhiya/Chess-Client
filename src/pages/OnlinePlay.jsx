@@ -198,7 +198,7 @@ const OnlinePlay = () => {
           Online Chess: Create a game, join a game, or play with a random opponent
         </h1>
       </header>
-      <div className="md:p-6">
+      <div className="">
         {error && <div className="text-red-500 mb-4">{error}</div>}
         {!gameStarted && (
           <>
