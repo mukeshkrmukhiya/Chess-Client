@@ -29,6 +29,21 @@ const OnlinePlay = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    const preventDefault = (e) => {
+      if (e.touches.length > 1) return; // Allow default multi-touch actions
+      if (e.touches[0].clientY > 0) {
+        e.preventDefault();
+      }
+    };
+
+    document.addEventListener('touchmove', preventDefault, { passive: false });
+
+    return () => {
+      document.removeEventListener('touchmove', preventDefault);
+    };
+  }, []);
+
+  useEffect(() => {
     
     const token  = localStorage.getItem('authToken');
     const storedPlayerId = localStorage.getItem('playerId');

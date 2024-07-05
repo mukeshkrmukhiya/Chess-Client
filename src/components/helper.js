@@ -353,6 +353,45 @@ export function performCastling(board, fromRow, fromCol, toRow, toCol) {
 }
 
 
+export function performCastlingOffline(board, fromRow, fromCol, toRow, toCol) {
+  const newBoard = JSON.parse(JSON.stringify(board));
+  const piece = newBoard[fromRow][fromCol];
+  
+  // Move the king
+  newBoard[toRow][toCol] = piece;
+  newBoard[fromRow][fromCol] = null;
+  
+  // Determine rook positions
+  let rookFromCol, rookToCol;
+  if (toCol > fromCol) {  // Kingside castling
+    rookFromCol = 7;
+    rookToCol = 5;
+  } else {  // Queenside castling
+    rookFromCol = 0;
+    rookToCol = 3;
+  }
+  
+  // Move the rook
+  const rook = newBoard[fromRow][rookFromCol];
+  if (!rook || rook.piece !== 'R') {
+    console.error('Rook not found for castling:', { fromRow, rookFromCol, rook });
+    return null; // Return null to indicate castling couldn't be performed
+  }
+  
+  newBoard[fromRow][rookToCol] = rook;
+  newBoard[fromRow][rookFromCol] = null;
+  
+  return {
+    newBoard,
+    rookMove: {
+      from: `${fromRow},${rookFromCol}`,
+      to: `${fromRow},${rookToCol}`,
+      piece: rook
+    }
+  };
+}
+
+
 
 
 

@@ -22,10 +22,10 @@ const Piece = ({ piece, color }) => {
 
   return (
     <img
-    className=''
+    className='mt-1 '
       src={imageSrc}
       alt={`${color} ${piece}`}
-      style={{ width: '95%', height: '95%', filter }}
+      style={{ width: '100%', height: '100%', filter }}
     />
   );
 };

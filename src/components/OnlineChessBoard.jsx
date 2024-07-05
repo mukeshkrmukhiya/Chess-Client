@@ -1,7 +1,4 @@
-
-
-
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback  } from 'react';
 import { isLegalMove, shouldPromotePawn, isLegalMoveConsideringCheck, initializeBoard, isInCheck, isCheckmate, canCastle, performCastling } from './helper';
  import { Square } from './Square';
  import GameOverModal from './GameOverModal';
@@ -9,6 +6,10 @@ import PromotionDialog from './PromotionDialog';
 import { PlayerInfo } from './PlayerInfo';
 import { useNavigate } from 'react-router-dom';
 import { Clock, X } from 'lucide-react';
+import axios from 'axios';
+import { backendUrl } from '../components/helper';
+
+
 
 const OnlineChessBoard = ({
   socket,
@@ -86,6 +87,8 @@ const OnlineChessBoard = ({
 
     socket.on('moveMade', ({ move, playerId: moveMakerPlayerId, currentTurn }) => {
       console.log('Move received:', move, 'by', moveMakerPlayerId, 'current turn:', currentTurn);
+      moveAudioRef.current.play().catch(e => console.error("Error playing audio:", e));
+
       
       setBoard(prevBoard => applyMove(prevBoard, move));
 
@@ -96,24 +99,7 @@ const OnlineChessBoard = ({
       setSelectedPiece(null);
       setLegalMoves([]);
     });
-    // socket.on('moveMade', ({ move, playerId: moveMakerPlayerId, currentTurn }) => {
-    //   console.log('Move made:', move, 'by', moveMakerPlayerId, 'current turn:', currentTurn);
-    //   const { from, to, piece } = move;
-    //   const [fromRow, fromCol] = from.split(',').map(Number);
-    //   const [toRow, toCol] = to.split(',').map(Number);
 
-    //   setBoard(prevBoard => {
-    //     const newBoard = JSON.parse(JSON.stringify(prevBoard));
-    //     newBoard[toRow][toCol] = piece;
-    //     newBoard[fromRow][fromCol] = null;
-    //     return newBoard;
-    //   });
-
-    //   setTurn(currentTurn);
-    //   setLastMove({ fromRow, fromCol, toRow, toCol });
-    //   setSelectedPiece(null);
-    //   setLegalMoves([]);
-    // });
 
     socket.on('playerLeft', ({ playerId: leftPlayerId }) => {
       if (leftPlayerId !== playerId) {
@@ -155,7 +141,7 @@ const OnlineChessBoard = ({
     setBoard(newBoard);
     setPromotionChoice(null);
     setSelectedPiece(null);
-    setTurn(turn === 'white' ? 'black' : 'white');
+    // setTurn(turn === 'white' ? 'black' : 'white');
 
     // Emit the move to the server
     const move = {
@@ -167,8 +153,7 @@ const OnlineChessBoard = ({
   };
 
 
-
-
+  
   useEffect(() => {
     if (!gameOver) {
       const opponentColor = turn === 'white' ? 'black' : 'white';
@@ -288,10 +273,10 @@ const OnlineChessBoard = ({
           setBoard(newBoard);
           setSelectedPiece(null);
           setLegalMoves([]);
-          moveAudioRef.current.play().catch(e => console.error("Error playing audio:", e));
+          // moveAudioRef.current.play().catch(e => console.error("Error playing audio:", e));
   
           socket.emit('makeMove', { gameCode, move, playerId });
-          setTurn(turn === 'white' ? 'black' : 'white');
+          // setTurn(turn === 'white' ? 'black' : 'white');
         }
       } else {
         // Invalid move, reset selection
@@ -305,103 +290,7 @@ const OnlineChessBoard = ({
     }
   };
 
-  // const handleCellClick = (rowIndex, colIndex) => {
-  //   const [actualRow, actualCol] = convertPosition(rowIndex, colIndex);
-  //   const piece = board[actualRow] && board[actualRow][actualCol];
-  
-  //   if (turn !== playerColor || !opponentPlayer) {
-  //     console.log("Not your turn");
-  //     return;
-  //   }
-  
-  //   if (piece && piece.color === playerColor) {
-  //     // Selecting a piece of the current player's color
-  //     setSelectedPiece({ piece, fromRow: actualRow, fromCol: actualCol });
-  //     const moves = [];
-  //     for (let i = 0; i < 8; i++) {
-  //       for (let j = 0; j < 8; j++) {
-  //         if (piece.piece === 'K') {
-  //           // For the king, check both regular moves and castling
-  //           if (
-  //             (isLegalMove(board, piece, actualRow, actualCol, i, j, lastMove) &&
-  //               isLegalMoveConsideringCheck(board, piece, actualRow, actualCol, i, j, lastMove)) ||
-  //             canCastle(board, actualRow, actualCol, i, j, playerColor)
-  //           ) {
-  //             moves.push({ row: i, col: j });
-  //           }
-  //         } else {
-  //           // For other pieces, check regular moves
-  //           if (
-  //             isLegalMove(board, piece, actualRow, actualCol, i, j, lastMove) &&
-  //             isLegalMoveConsideringCheck(board, piece, actualRow, actualCol, i, j, lastMove)
-  //           ) {
-  //             moves.push({ row: i, col: j });
-  //           }
-  //         }
-  //       }
-  //     }
-  //     setLegalMoves(moves);
-  //   } else if (selectedPiece) {
-  //     // Attempting to move the selected piece
-  //     const { piece, fromRow, fromCol } = selectedPiece;
-  //     if (
-  //       (isLegalMove(board, piece, fromRow, fromCol, actualRow, actualCol, lastMove) &&
-  //         isLegalMoveConsideringCheck(board, piece, fromRow, fromCol, actualRow, actualCol, lastMove)) ||
-  //       (piece.piece === 'K' && canCastle(board, fromRow, fromCol, actualRow, actualCol, playerColor))
-  //     ) {
-  //       // Valid move
-  //       let newBoard;
-  //       let move;
-  
-  //       if (piece.piece === 'K' && Math.abs(fromCol - actualCol) === 2) {
-  //         // Castling move
-  //         const { newBoard: castlingBoard, rookMove } = performCastling(board, fromRow, fromCol, actualRow, actualCol);
-  //         newBoard = castlingBoard;
-  
-  //         move = {
-  //           from: `${fromRow},${fromCol}`,
-  //           to: `${actualRow},${actualCol}`,
-  //           piece: piece,
-  //           isCastling: true,
-  //           rookMove: rookMove // Include the rook move information
-  //         };
-  //       } else {
-  //         // Regular move
-  //         newBoard = JSON.parse(JSON.stringify(board));
-  //         newBoard[actualRow][actualCol] = piece;
-  //         newBoard[fromRow][fromCol] = null;
-  
-  //         move = {
-  //           from: `${fromRow},${fromCol}`,
-  //           to: `${actualRow},${actualCol}`,
-  //           piece: piece,
-  //           isCastling: false
-  //         };
-  //       }
-  
-  //       if (shouldPromotePawn(piece, actualRow)) {
-  //         setPromotionChoice({ rowIndex: actualRow, colIndex: actualCol, pieceColor: piece.color, fromRow, fromCol });
-  //       } else {
-  //         setBoard(newBoard);
-  //         setSelectedPiece(null);
-  //         setLegalMoves([]);
-  //         moveAudioRef.current.play().catch(e => console.error("Error playing audio:", e));
-  
-  //         socket.emit('makeMove', { gameCode, move, playerId });
-  //         setTurn(turn === 'white' ? 'black' : 'white');
-  //       }
-  //     } else {
-  //       // Invalid move, reset selection
-  //       setSelectedPiece(null);
-  //       setLegalMoves([]);
-  //     }
-  //   } else {
-  //     // Clicking on an empty cell or opponent's piece when no piece is selected
-  //     setSelectedPiece(null);
-  //     setLegalMoves([]);
-  //   }
-  // };
- 
+
 
   useEffect(() => {
     socket.on('rematchRequested', ({ requestingPlayerId }) => {
@@ -483,11 +372,50 @@ const OnlineChessBoard = ({
       requestedBy: null
     });
   };
-  const handleGameOver = (winnerColor, reason) => {
-    setGameOver(true);
-    setWinner(winnerColor === 'white' ? 'White' : 'Black');
-    setGameOverReason(reason);
-    setModalVisible(true);
+
+
+  // const handleGameOver = async (winnerColor, reason) => {
+  //   try {
+  //     setGameOver(true);
+  //     const winnerText = winnerColor === 'white' ? 'White' : 'Black';
+  //     setWinner(winnerText);
+  //     setGameOverReason(reason);
+  //     setModalVisible(true);
+      
+  //     await callEndGameAPI(winnerColor);
+  //   } catch (error) {
+  //     console.error('Error in handleGameOver:', error);
+  //     // Optionally, you could set an error state here to display to the user
+  //   }
+  // };
+
+  const handleGameOver = useCallback((winner, reason) => {
+    if (!gameOver) {
+      setGameOver(true);
+      setWinner(winner);
+      setGameOverReason(reason);
+      setModalVisible(true);
+      callEndGameAPI(winner, reason);
+    }
+  }, [gameOver]);
+  
+  const callEndGameAPI = async (winnerColor) => {
+    try {
+      const response = await axios.post(`${backendUrl}/api/games/end-game`, {
+        gameCode,
+        winner: winnerColor
+      });
+  
+      if (response.status === 200) {
+        console.log('Game ended successfully:', response.data);
+        return response.data;
+      } else {
+        throw new Error('Failed to end game: ' + response.data.message);
+      }
+    } catch (error) {
+      console.error('Error ending game:', error.message);
+      throw error; // Re-throw the error to be handled by the caller
+    }
   };
   const toggleModal = () => {
     setModalVisible(false);
@@ -605,6 +533,7 @@ const OnlineChessBoard = ({
           handleRematchAccept={handleRematchAccept}
           handleRematchReject={handleRematchReject}
           toggleModal={toggleModal}
+          gameCode = {gameCode}
         />
       )}
     </div>
@@ -613,8 +542,6 @@ const OnlineChessBoard = ({
 
 
 export default OnlineChessBoard;
-
-
 
  // const handleCellClick = (rowIndex, colIndex) => {
   //   const [actualRow, actualCol] = convertPosition(rowIndex, colIndex);
@@ -701,3 +628,102 @@ export default OnlineChessBoard;
   //     setLegalMoves([]);
   //   }
   // };
+
+
+    // const handleCellClick = (rowIndex, colIndex) => {
+  //   const [actualRow, actualCol] = convertPosition(rowIndex, colIndex);
+  //   const piece = board[actualRow] && board[actualRow][actualCol];
+  
+  //   if (turn !== playerColor || !opponentPlayer) {
+  //     console.log("Not your turn");
+  //     return;
+  //   }
+  
+  //   if (piece && piece.color === playerColor) {
+  //     // Selecting a piece of the current player's color
+  //     setSelectedPiece({ piece, fromRow: actualRow, fromCol: actualCol });
+  //     const moves = [];
+  //     for (let i = 0; i < 8; i++) {
+  //       for (let j = 0; j < 8; j++) {
+  //         if (piece.piece === 'K') {
+  //           // For the king, check both regular moves and castling
+  //           if (
+  //             (isLegalMove(board, piece, actualRow, actualCol, i, j, lastMove) &&
+  //               isLegalMoveConsideringCheck(board, piece, actualRow, actualCol, i, j, lastMove)) ||
+  //             canCastle(board, actualRow, actualCol, i, j, playerColor)
+  //           ) {
+  //             moves.push({ row: i, col: j });
+  //           }
+  //         } else {
+  //           // For other pieces, check regular moves
+  //           if (
+  //             isLegalMove(board, piece, actualRow, actualCol, i, j, lastMove) &&
+  //             isLegalMoveConsideringCheck(board, piece, actualRow, actualCol, i, j, lastMove)
+  //           ) {
+  //             moves.push({ row: i, col: j });
+  //           }
+  //         }
+  //       }
+  //     }
+  //     setLegalMoves(moves);
+  //   } else if (selectedPiece) {
+  //     // Attempting to move the selected piece
+  //     const { piece, fromRow, fromCol } = selectedPiece;
+  //     if (
+  //       (isLegalMove(board, piece, fromRow, fromCol, actualRow, actualCol, lastMove) &&
+  //         isLegalMoveConsideringCheck(board, piece, fromRow, fromCol, actualRow, actualCol, lastMove)) ||
+  //       (piece.piece === 'K' && canCastle(board, fromRow, fromCol, actualRow, actualCol, playerColor))
+  //     ) {
+  //       // Valid move
+  //       let newBoard;
+  //       let move;
+  
+  //       if (piece.piece === 'K' && Math.abs(fromCol - actualCol) === 2) {
+  //         // Castling move
+  //         const { newBoard: castlingBoard, rookMove } = performCastling(board, fromRow, fromCol, actualRow, actualCol);
+  //         newBoard = castlingBoard;
+  
+  //         move = {
+  //           from: `${fromRow},${fromCol}`,
+  //           to: `${actualRow},${actualCol}`,
+  //           piece: piece,
+  //           isCastling: true,
+  //           rookMove: rookMove // Include the rook move information
+  //         };
+  //       } else {
+  //         // Regular move
+  //         newBoard = JSON.parse(JSON.stringify(board));
+  //         newBoard[actualRow][actualCol] = piece;
+  //         newBoard[fromRow][fromCol] = null;
+  
+  //         move = {
+  //           from: `${fromRow},${fromCol}`,
+  //           to: `${actualRow},${actualCol}`,
+  //           piece: piece,
+  //           isCastling: false
+  //         };
+  //       }
+  
+  //       if (shouldPromotePawn(piece, actualRow)) {
+  //         setPromotionChoice({ rowIndex: actualRow, colIndex: actualCol, pieceColor: piece.color, fromRow, fromCol });
+  //       } else {
+  //         setBoard(newBoard);
+  //         setSelectedPiece(null);
+  //         setLegalMoves([]);
+  //         moveAudioRef.current.play().catch(e => console.error("Error playing audio:", e));
+  
+  //         socket.emit('makeMove', { gameCode, move, playerId });
+  //         setTurn(turn === 'white' ? 'black' : 'white');
+  //       }
+  //     } else {
+  //       // Invalid move, reset selection
+  //       setSelectedPiece(null);
+  //       setLegalMoves([]);
+  //     }
+  //   } else {
+  //     // Clicking on an empty cell or opponent's piece when no piece is selected
+  //     setSelectedPiece(null);
+  //     setLegalMoves([]);
+  //   }
+  // };
+ 
