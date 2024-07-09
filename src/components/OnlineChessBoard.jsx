@@ -5,7 +5,7 @@ import { isLegalMove, shouldPromotePawn, isLegalMoveConsideringCheck, initialize
 import PromotionDialog from './PromotionDialog';
 import { PlayerInfo } from './PlayerInfo';
 import { useNavigate } from 'react-router-dom';
-import { Clock, X } from 'lucide-react';
+import { Clock, X ,Maximize, Minimize } from 'lucide-react';
 import axios from 'axios';
 import { backendUrl } from '../components/helper';
 
@@ -39,6 +39,9 @@ const OnlineChessBoard = ({
   const [opponentPlayer, setOpponentPlayer] = useState(opponentUsername);
   const [gameStatus, setGameStatus] = useState(currentGameStatus);
   const [playerColor, setPlayerColor] = useState(playerColour);
+  const [endGameAPICalled, setEndGameAPICalled] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const boardRef = useRef(null);
   const moveAudioRef = useRef(new Audio('assets/audio/move-sound.mp3'));
   const [rematchState, setRematchState] = useState({
     requested: false,
@@ -102,7 +105,7 @@ const OnlineChessBoard = ({
 
 
     socket.on('playerLeft', ({ playerId: leftPlayerId }) => {
-      if (leftPlayerId !== playerId) {
+      if (leftPlayerId !== playerId && !gameOver) {
         handleGameOver(playerColor, 'Opponent left the game');
       }
     });
@@ -112,7 +115,7 @@ const OnlineChessBoard = ({
       socket.off('moveMade');
       socket.off('playerLeft');
     };
-  }, [socket, turn, playerColor, navigate, playerId]);
+  }, [socket, turn, playerColor, navigate, playerId, gameOver]);
 
   // Function to rotate the board
   const rotateBoard = (board) => {
@@ -343,6 +346,7 @@ const OnlineChessBoard = ({
       accepted: false,
       requestedBy: null
     });
+    setEndGameAPICalled(false);
   };
 
   const handleRematchRequest = () => {
@@ -374,30 +378,33 @@ const OnlineChessBoard = ({
   };
 
 
-  // const handleGameOver = async (winnerColor, reason) => {
-  //   try {
-  //     setGameOver(true);
-  //     const winnerText = winnerColor === 'white' ? 'White' : 'Black';
-  //     setWinner(winnerText);
-  //     setGameOverReason(reason);
-  //     setModalVisible(true);
-      
-  //     await callEndGameAPI(winnerColor);
-  //   } catch (error) {
-  //     console.error('Error in handleGameOver:', error);
-  //     // Optionally, you could set an error state here to display to the user
-  //   }
-  // };
-
-  const handleGameOver = useCallback((winner, reason) => {
-    if (!gameOver) {
+  const handleGameOver = async (winnerColor, reason) => {
+    try {
+      if (!gameOver && !endGameAPICalled) {
       setGameOver(true);
-      setWinner(winner);
+      const winnerText = winnerColor === 'white' ? 'White' : 'Black';
+      setWinner(winnerText);
       setGameOverReason(reason);
       setModalVisible(true);
-      callEndGameAPI(winner, reason);
+      setEndGameAPICalled(true);
+      await callEndGameAPI(winnerColor);
+      }
+    } catch (error) {
+      console.error('Error in handleGameOver:', error);
     }
-  }, [gameOver]);
+  };
+
+  // const handleGameOver = useCallback((winner, reason) => {
+  //   if (!gameOver) {
+  //     setGameOver(true);
+  //     setWinner(winner);
+  //     setGameOverReason(reason);
+  //     setModalVisible(true);
+  //     callEndGameAPI(winner, reason);
+  //   }
+
+    
+  // }, [gameOver]);
   
   const callEndGameAPI = async (winnerColor) => {
     try {
@@ -431,11 +438,68 @@ const OnlineChessBoard = ({
 
   const handleLeaveGame = () => {
     socket.emit('leaveGame', { gameCode, playerId });
-    navigate('/'); // Or wherever you want to redirect after leaving
+    navigate('/'); 
   };
 
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      if (boardRef.current.requestFullscreen) {
+        boardRef.current.requestFullscreen();
+      } else if (boardRef.current.mozRequestFullScreen) { // Firefox
+        boardRef.current.mozRequestFullScreen();
+      } else if (boardRef.current.webkitRequestFullscreen) { // Chrome, Safari and Opera
+        boardRef.current.webkitRequestFullscreen();
+      } else if (boardRef.current.msRequestFullscreen) { // IE/Edge
+        boardRef.current.msRequestFullscreen();
+      }
+      setIsFullscreen(true);
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if (document.mozCancelFullScreen) { // Firefox
+        document.mozCancelFullScreen();
+      } else if (document.webkitExitFullscreen) { // Chrome, Safari and Opera
+        document.webkitExitFullscreen();
+      } else if (document.msExitFullscreen) { // IE/Edge
+        document.msExitFullscreen();
+      }
+      setIsFullscreen(false);
+    }
+  };
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+    };
+  }, []);
+
+  // useEffect(() => {
+  //   const preventDefault = (e) => e.preventDefault();
+  //   document.body.style.overscrollBehavior = 'none';
+  //   document.addEventListener('touchmove', preventDefault, { passive: false });
+
+  //   return () => {
+  //     document.body.style.overscrollBehavior = 'auto';
+  //     document.removeEventListener('touchmove', preventDefault);
+  //   };
+  // }, []);
+
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen w-full bg-gray-900  sm:p-4">
+    <div className="flex flex-col items-center justify-center min-h-screen w-full bg-gray-900 sm:p-4" ref={boardRef}>
       <div className="w-full max-w-4xl bg-gray-800 rounded-lg shadow-lg overflow-hidden">
         {/* Header */}
         <div className="bg-gray-700 p-4 flex justify-between items-center">
@@ -449,6 +513,13 @@ const OnlineChessBoard = ({
           <div className={`px-3 py-1 rounded ${turn === playerColor ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
             {turn === playerColor ? "Your turn" : "Opponent's turn"}
           </div>
+          <button
+            onClick={toggleFullscreen}
+            className={`flex items-center ${isFullscreen?'bg-gray-800 text-white p-1 rounded-md': 'p-1' }  space-x-2 text-gray-200 hover:text-blue-300 transition-colors duration-200`}
+          >
+            {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
+            <span className="hidden sm:inline">{isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}</span>
+          </button>
         </div>
 
         {/* Game Content */}

@@ -1,9 +1,5 @@
-
-
-
-
-
 import React from 'react';
+import { Toaster } from 'react-hot-toast';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
@@ -21,6 +17,7 @@ function App() {
     <Router>
       <div>
         <Navbar />
+        <Toaster />
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/onlineplay" element={<OnlinePlay />} />

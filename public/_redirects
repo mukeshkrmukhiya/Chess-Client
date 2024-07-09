@@ -1,1 +1,5 @@
+# Exclude Google verification file from redirect
+/google1ac8e8c51d3d802f.html    /google1ac8e8c51d3d802f.html    200
+
+# Redirect all other routes to index.html
 /*    /index.html    200

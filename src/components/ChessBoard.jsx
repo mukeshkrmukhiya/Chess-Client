@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { isLegalMove, shouldPromotePawn, isLegalMoveConsideringCheck, initializeBoard, isInCheck, isCheckmate, canCastle, performCastling } from './helper';
 import { Square } from './Square';
 import PromotionDialog from './PromotionDialog';
 import { PlayerInfo } from './PlayerInfo';
-import { Clock, Play } from 'lucide-react';
+import { Clock, Play, Focus, ChevronUp, ChevronDown } from 'lucide-react';
 import GameOverModalOffline from './GameOverModalOffline';
 
 const ChessBoard = () => {
@@ -24,6 +25,9 @@ const ChessBoard = () => {
   const [blackPlayer, setBlackPlayer] = useState('');
   const [selectedTime, setSelectedTime] = useState("10");
   const [isMobile, setIsMobile] = useState(false);
+  const [isOffline, setIsOffline] = useState(true);
+  const [focusedMode, setFocusedMode] = useState(false);
+  const boardRef = useRef(null);
   const moveAudioRef = useRef(new Audio('assets/audio/move-sound.mp3'));
 
 
@@ -135,7 +139,7 @@ const ChessBoard = () => {
         let newBoard;
 
         if (piece.piece === 'K' && Math.abs(fromCol - colIndex) === 2) {
-          const castlingResult = performCastling(board, fromRow, fromCol, rowIndex, colIndex);
+          const castlingResult = performCastling(board, fromRow, fromCol, rowIndex, colIndex, isOffline);
           if (castlingResult) {
             newBoard = castlingResult.newBoard;
             move.isCastling = true;
@@ -224,6 +228,37 @@ const ChessBoard = () => {
     );
   };
 
+  const toggleFocusedMode = () => {
+    setFocusedMode(!focusedMode);
+    if (!focusedMode) {
+      scrollToBottom();
+      if (isMobile) {
+        document.body.style.overflow = 'hidden';
+        document.body.style.touchAction = 'none';
+      }
+    } else {
+      if (isMobile) {
+        document.body.style.overflow = '';
+        document.body.style.touchAction = '';
+      }
+    }
+  };
+
+  const scrollToBottom = () => {
+    if (boardRef.current) {
+      boardRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+  };
+
+ 
+
+  useEffect(() => {
+    return () => {
+      document.body.style.overflow = '';
+      document.body.style.touchAction = '';
+    };
+  }, []);
+
   return (
     <div className="flex flex-col items-center justify-center min-h-screen w-full bg-gray-900 sm:p-4">
       <div className="w-full max-w-4xl bg-gray-800 rounded-lg shadow-lg overflow-hidden">
@@ -266,7 +301,7 @@ const ChessBoard = () => {
               </button>
             </div>
             </div>
-        ) : (
+          ) : (
           <>
             <div className="bg-gray-700 p-4 flex justify-between items-center">
               <div className="flex items-center space-x-2 text-white">
@@ -276,9 +311,22 @@ const ChessBoard = () => {
               <div className={`px-3 py-1 rounded ${turn === 'white' ? 'bg-white text-black' : 'bg-black text-white'}`}>
                 {turn === 'white' ? "White's turn" : "Black's turn"}
               </div>
+              <button
+                onClick={toggleFocusedMode}
+                className={`p-2 rounded ${focusedMode ? 'bg-blue-500' : 'bg-gray-600'} text-white`}
+              >
+                <Focus size={20} />
+              </button>
             </div>
 
-            <div className={`flex ${isMobile ? 'flex-col' : 'flex-row'}`}>
+            {focusedMode && isMobile && (
+              <div className="bg-gray-600 text-gray-900 px-4 py-2 text-sm">
+                To enable scrolling, exit focused mode.
+              </div>
+            )}
+
+            <div ref={boardRef} className={`flex ${isMobile ? 'flex-col' : 'flex-row'}`}>
+            
               {isMobile && (
                 <div className={`w-full bg-gray-750 p-4 ${isMobile ? 'transform rotate-180' : ''}`}>
                   <PlayerInfo

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast'; 
 import { backendUrl } from '../components/helper';
 
 const Register = () => {
@@ -10,6 +11,7 @@ const Register = () => {
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const navigate = useNavigate();
+    
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -23,6 +25,7 @@ const Register = () => {
             });
             setIsLoading(false);
             navigate('/login');
+            toast.success('Congratulations! You received a signup bonus of 700 points.');
             console.log(res.data);
         } catch (err) {
             setIsLoading(false);

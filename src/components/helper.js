@@ -314,7 +314,7 @@ const isPawnMove = (board, piece, fromRow, fromCol, toRow, toCol, direction, las
 
 //new pc function
 
-export function performCastling(board, fromRow, fromCol, toRow, toCol) {
+export function performCastling(board, fromRow, fromCol, toRow, toCol, isOffline) {
   const newBoard = JSON.parse(JSON.stringify(board));
   const piece = newBoard[fromRow][fromCol];
   
@@ -340,7 +340,7 @@ export function performCastling(board, fromRow, fromCol, toRow, toCol) {
   }
   
   newBoard[fromRow][rookToCol] = rook;
-  // newBoard[fromRow][rookFromCol] = null;
+  isOffline ? newBoard[fromRow][rookFromCol] = null : newBoard[fromRow][rookToCol] = rook ;
   
   return {
     newBoard,
