@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { Clock, X ,Maximize, Minimize } from 'lucide-react';
 import axios from 'axios';
 import { backendUrl } from '../components/helper';
+import toast, { Toaster } from 'react-hot-toast';
 
 
 
@@ -107,13 +108,33 @@ const OnlineChessBoard = ({
     socket.on('playerLeft', ({ playerId: leftPlayerId }) => {
       if (leftPlayerId !== playerId && !gameOver) {
         handleGameOver(playerColor, 'Opponent left the game');
+        toast.error('Your opponent has left the game.', { duration: 5000 });
       }
+    });
+
+    socket.on('playerDisconnected', ({ playerId: disconnectedPlayerId }) => {
+      console.log(`Player ${disconnectedPlayerId} disconnected`);
+      if (disconnectedPlayerId !== playerId && !gameOver) {
+        setGameStatus('opponent_disconnected');
+        handleGameOver(playerColor, 'Opponent disconnected');
+        toast.error('Your opponent has disconnected.', { duration: 5000 });
+      }
+    });
+
+    socket.on('disconnect', () => {
+      console.log('Disconnected from server');
+      setGameStatus('disconnected');
+      toast.error('You have been disconnected from the server. Please refresh the page to reconnect.', {
+        duration: null, // This will make the toast persist until dismissed
+      });
     });
 
     return () => {
       socket.off('gameState');
       socket.off('moveMade');
       socket.off('playerLeft');
+      socket.off('playerDisconnected');
+      socket.off('disconnect');
     };
   }, [socket, turn, playerColor, navigate, playerId, gameOver]);
 
