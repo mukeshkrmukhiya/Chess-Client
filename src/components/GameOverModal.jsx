@@ -1,101 +1,8 @@
+import React from 'react';
+import { RotateCcw, X } from 'lucide-react';
+import Button from './ui/Button';
 
-// import React,{ useEffect } from 'react';
-// import axios from 'axios';
-// import { backendUrl } from './helper';
-// const GameOverModal = ({
-//     winner,
-//     gameOverReason,
-//     rematchState,
-//     playerId,
-//     handleRematchRequest,
-//     handleRematchAccept,
-//     handleRematchReject,
-//     toggleModal,
-//     gameCode
-//   }) =>{ 
-
-//     useEffect(() => {
-//       const callEndGameAPI = async (winnerColor) => {
-//         try {
-//           const response = await axios.post(`${backendUrl}/api/games/end-game`, {
-//             gameCode,
-//             winner: winnerColor
-//           });
-      
-//           if (response.status === 200) {
-//             console.log('Game ended successfully:', response.data);
-//             return response.data;
-//           } else {
-//             throw new Error('Failed to end game: ' + response.data.message);
-//           }
-//         } catch (error) {
-//           console.error('Error ending game:', error.message);
-//           throw error; // Re-throw the error to be handled by the caller
-//         }
-//       };
-    
-//       callEndGameAPI();
-//     }, [])
-    
-    
-    
-//     return(
-//     <div onClick={toggleModal} className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-6">
-//       <div onClick={(e) => e.stopPropagation()} className="bg-gray-300 rounded-lg p-8 max-w-md w-full">
-//         <h2 className="text-2xl font-bold mb-4 text-center">
-//           {winner === 'Draw' ? 'Game Draw' : `${winner} Wins!`}
-//         </h2>
-//         {winner !== 'Draw' && (
-//           <p className="text-gray-600 mb-6 text-center">{`by ${gameOverReason}`}</p>
-//         )}
-//         <div className="flex flex-col space-y-3">
-//           {!rematchState.requested && (
-//             <button
-//               onClick={handleRematchRequest}
-//               className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors duration-200"
-//             >
-//               Request Rematch
-//             </button>
-//           )}
-//           {rematchState.requested && rematchState.requestedBy !== playerId && (
-//             <>
-//               <button
-//                 onClick={handleRematchAccept}
-//                 className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-colors duration-200"
-//               >
-//                 Accept 
-//               </button>
-//               <button
-//                 onClick={handleRematchReject}
-//                 className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-colors duration-200"
-//               >
-//                 Decline 
-//               </button>
-//             </>
-//           )}
-//           {rematchState.requested && rematchState.requestedBy === playerId && (
-//             <p className="text-center text-gray-600">Rematch requested. Waiting for opponent...</p>
-//           )}
-//           {rematchState.accepted && (
-//             <p className="text-center text-green-600">Rematch accepted! Starting new game...</p>
-//           )}
-//           <button
-//             onClick={() => window.location.reload()}
-//             className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition-colors duration-200"
-//           >
-//             New Game
-//           </button>
-//         </div>
-//       </div>
-//     </div>
-//   )};
-
-//   export default GameOverModal;
-
-import React, { useEffect } from 'react';
-import axios from 'axios';
-import { backendUrl } from './helper';
-
+// Shows online game outcome and rematch controls.
 const GameOverModal = ({
   winner,
   gameOverReason,
@@ -104,85 +11,37 @@ const GameOverModal = ({
   handleRematchRequest,
   handleRematchAccept,
   handleRematchReject,
-  toggleModal,
-  gameCode
-}) => {
-
-  // useEffect(() => {
-  //   const callEndGameAPI = async (winnerColor) => {
-  //     try {
-  //       const response = await axios.post(`${backendUrl}/api/games/end-game`, {
-  //         gameCode,
-  //         winner: winnerColor
-  //       });
-
-  //       if (response.status === 200) {
-  //         console.log('Game ended successfully:', response.data);
-  //         return response.data;
-  //       } else {
-  //         throw new Error('Failed to end game: ' + response.data.message);
-  //       }
-  //     } catch (error) {
-  //       console.error('Error ending game:', error.message);
-  //       throw error; // Re-throw the error to be handled by the caller
-  //     }
-  //   };
-
-  //   if (winner && gameCode) {
-  //     callEndGameAPI(winner);
-  //   }
-  // }, [winner, gameCode]);
-
-  return (
-    <div onClick={toggleModal} className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-6">
-      <div onClick={(e) => e.stopPropagation()} className="bg-gray-300 rounded-lg p-8 max-w-md w-full">
-        <h2 className="text-2xl font-bold mb-4 text-center">
-          {winner === 'Draw' ? 'Game Draw' : `${winner} Wins!`}
-        </h2>
-        {winner !== 'Draw' && (
-          <p className="text-gray-600 mb-6 text-center">{`by ${gameOverReason}`}</p>
+  toggleModal
+}) => (
+  <div onClick={toggleModal} className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+    <div onClick={(event) => event.stopPropagation()} className="luxury-panel w-full max-w-md rounded-2xl p-6">
+      <div className="flex items-center justify-between gap-4">
+        <h2 className="text-2xl font-extrabold">{winner === 'Draw' ? 'Game Draw' : `${winner} Wins`}</h2>
+        <button onClick={toggleModal} className="rounded-xl p-2 text-[#9CA3AF] hover:bg-white/10 hover:text-[#F9FAFB]" aria-label="Close modal">
+          <X size={20} />
+        </button>
+      </div>
+      {winner !== 'Draw' && <p className="mt-2 text-[#9CA3AF]">by {gameOverReason}</p>}
+      <div className="mt-6 grid gap-3">
+        {!rematchState.requested && (
+          <Button onClick={handleRematchRequest}>
+            <RotateCcw size={18} /> Request Rematch
+          </Button>
         )}
-        <div className="flex flex-col space-y-3">
-          {!rematchState.requested && (
-            <button
-              onClick={handleRematchRequest}
-              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors duration-200"
-            >
-              Request Rematch
-            </button>
-          )}
-          {rematchState.requested && rematchState.requestedBy !== playerId && (
-            <>
-              <button
-                onClick={handleRematchAccept}
-                className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-colors duration-200"
-              >
-                Accept 
-              </button>
-              <button
-                onClick={handleRematchReject}
-                className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-colors duration-200"
-              >
-                Decline 
-              </button>
-            </>
-          )}
-          {rematchState.requested && rematchState.requestedBy === playerId && (
-            <p className="text-center text-gray-600">Rematch requested. Waiting for opponent...</p>
-          )}
-          {rematchState.accepted && (
-            <p className="text-center text-green-600">Rematch accepted! Starting new game...</p>
-          )}
-          <button
-            onClick={() => window.location.reload()}
-            className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition-colors duration-200"
-          >
-            New Game
-          </button>
-        </div>
+        {rematchState.requested && rematchState.requestedBy !== playerId && (
+          <>
+            <Button onClick={handleRematchAccept}>Accept Rematch</Button>
+            <Button onClick={handleRematchReject} variant="danger">Decline Rematch</Button>
+          </>
+        )}
+        {rematchState.requested && rematchState.requestedBy === playerId && (
+          <p className="rounded-2xl border border-[rgba(212,175,55,0.18)] bg-white/5 p-4 text-center text-sm text-[#9CA3AF]">Rematch requested. Waiting for opponent...</p>
+        )}
+        {rematchState.accepted && <p className="text-center text-green-300">Rematch accepted. Starting new game...</p>}
+        <Button onClick={() => window.location.reload()} variant="secondary">New Game</Button>
       </div>
     </div>
-  );
-};
+  </div>
+);
 
 export default GameOverModal;

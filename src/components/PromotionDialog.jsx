@@ -1,31 +1,31 @@
 import React from 'react';
 
-const PromotionDialog = ({ onSelect }) => {
-  const pieceIcons = {
-    Q: '♕',
-    R: '♖',
-    B: '♗',
-    N: '♘',
-  };
+const pieceLabels = {
+  Q: 'Queen',
+  R: 'Rook',
+  B: 'Bishop',
+  N: 'Knight'
+};
 
-  return (
-    <div className="fixed inset-0 flex items-center justify-center z-50">
-      <div className="absolute inset-0 bg-black opacity-50"></div>
-      <div className="relative bg-white rounded-lg shadow-lg p-2 w-32">
-        <div className="grid grid-cols-2 gap-2">
-          {Object.entries(pieceIcons).map(([piece, icon]) => (
-            <div
-              key={piece}
-              onClick={() => onSelect(piece)}
-              className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-2 rounded text-2xl flex items-center justify-center cursor-pointer"
-            >
-              {icon}
-            </div>
-          ))}
-        </div>
+// Presents promotion choices without changing promotion rules.
+const PromotionDialog = ({ onSelect }) => (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+    <div className="luxury-panel w-full max-w-sm rounded-2xl p-6">
+      <h2 className="text-center text-2xl font-bold text-[#F9FAFB]">Choose Promotion</h2>
+      <div className="mt-6 grid grid-cols-2 gap-3">
+        {Object.entries(pieceLabels).map(([piece, label]) => (
+          <button
+            key={piece}
+            onClick={() => onSelect(piece)}
+            className="rounded-2xl border border-[rgba(212,175,55,0.18)] bg-white/5 px-4 py-5 text-center hover:border-[#D4AF37] hover:bg-[#D4AF37]/10"
+          >
+            <span className="block text-3xl font-extrabold text-[#D4AF37]">{piece}</span>
+            <span className="mt-1 block text-sm text-[#9CA3AF]">{label}</span>
+          </button>
+        ))}
       </div>
     </div>
-  );
-};
+  </div>
+);
 
 export default PromotionDialog;

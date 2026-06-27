@@ -1,158 +1,108 @@
-// src/components/Navbar.js
-
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Menu, X, Home, User, LogIn, UserPlus, LogOut, Gamepad2 } from 'lucide-react';
-import { FaChess } from "react-icons/fa";
+import { NavLink, Link, useNavigate } from 'react-router-dom';
+import { BarChart3, Crown, History, Home, LogIn, LogOut, Menu, Monitor, Settings, Swords, User, UserPlus, X } from 'lucide-react';
 
+const navItems = [
+  { to: '/', label: 'Home', icon: Home },
+  { to: '/onlineplay', label: 'Play Online', icon: Swords },
+  { to: '/play', label: 'Play Computer', icon: Monitor },
+  { to: '/leaderboard', label: 'Leaderboard', icon: BarChart3 },
+  { to: '/history', label: 'History', icon: History },
+  { to: '/profile', label: 'Profile', icon: User },
+  { to: '/settings', label: 'Settings', icon: Settings }
+];
+
+// Provides responsive primary navigation and session controls.
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
 
-  const toggleMenu = () => {
-    setIsOpen(!isOpen);
-  };
-
   const handleLogout = () => {
     localStorage.removeItem('authToken');
+    localStorage.removeItem('playerId');
+    setIsOpen(false);
     navigate('/login');
   };
 
-  const NavItem = ({ to, icon: Icon, children }) => (
-    <Link
-      to={to}
-      className="flex items-center space-x-2 text-gray-300 hover:text-white hover:bg-gray-700 px-3 py-2 rounded-md text-sm font-medium"
-    >
-      <Icon size={18} />
-      <span>{children}</span>
-    </Link>
+  const linkClass = ({ isActive }) =>
+    `inline-flex items-center gap-2 rounded-2xl px-3 py-2 text-sm font-semibold ${
+      isActive
+        ? 'bg-[#D4AF37] text-gray-950 shadow-lg shadow-[#D4AF37]/20'
+        : 'text-[#9CA3AF] hover:bg-white/10 hover:text-[#F9FAFB]'
+    }`;
+
+  const renderLinks = () => (
+    <>
+      {navItems.map(({ to, label, icon: Icon }) => (
+        <NavLink key={to} to={to} className={linkClass} onClick={() => setIsOpen(false)}>
+          <Icon size={17} />
+          <span>{label}</span>
+        </NavLink>
+      ))}
+    </>
   );
 
   return (
-    <nav className="bg-gray-800" aria-label="Main navigation">
-      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
-        <div className="relative flex items-center justify-between h-16">
-          <div className="flex-1 flex items-center justify-start sm:items-stretch">
-            <Link to="/" className="flex-shrink-0 flex items-center text-gray-300 hover:text-white ">
-              <FaChess className="h-8 w-8 " />
-              <span className="text-xl font-bold ml-2 sm:hidden lg:block">MukhiyaChessApp</span>
-            </Link>
-            <div className="hidden sm:block sm:ml-6">
-              <div className="flex space-x-4">
-                <NavItem to="/" icon={Home}>Home</NavItem>
-                <NavItem to="/onlineplay" icon={Gamepad2}>Online Play</NavItem>
-                <NavItem to="/play" icon={Gamepad2}>Offline Play</NavItem>
-                <NavItem to="/profile" icon={User}>Profile</NavItem>
-              </div>
-            </div>
+    <header className="sticky top-0 z-40 border-b border-[rgba(212,175,55,0.18)] bg-[#111827]/90 backdrop-blur-xl">
+      <nav className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8" aria-label="Main navigation">
+        <Link to="/" className="flex items-center gap-3" onClick={() => setIsOpen(false)}>
+          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#D4AF37] text-gray-950 shadow-lg shadow-[#D4AF37]/20">
+            <Crown size={22} />
+          </span>
+          <div className="leading-tight">
+            <span className="block text-base font-extrabold text-[#F9FAFB] sm:text-lg">Mukhiya Chess</span>
+            <span className="hidden text-xs font-medium text-[#9CA3AF] sm:block">Luxury Dark Arena</span>
           </div>
-          <div className="absolute inset-y-0 right-0 flex items-center pr-2 sm:static sm:inset-auto sm:ml-6 sm:pr-0">
-            <div className="hidden sm:flex space-x-2">
-              <NavItem to="/login" icon={LogIn}>Login</NavItem>
-              <NavItem to="/register" icon={UserPlus}>Register</NavItem>
-              <button
-                onClick={handleLogout}
-                className="flex items-center space-x-2 text-gray-300 hover:text-white hover:bg-gray-700 px-3 py-2 rounded-md text-sm font-medium"
-              >
-                <LogOut size={18} />
-                <span>Logout</span>
-              </button>
-            </div>
-            {/* Mobile menu button */}
-            <div className="flex sm:hidden">
-              <button
-                onClick={toggleMenu}
-                className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
-              >
-                <span className="sr-only">Open main menu</span>
-                {isOpen ? (
-                  <X className="block h-6 w-6" aria-hidden="true" />
-                ) : (
-                  <Menu className="block h-6 w-6" aria-hidden="true" />
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+        </Link>
 
-      {/* Mobile menu */}
-      <div className={`sm:hidden ${isOpen ? 'block' : 'hidden'}`} onClick={toggleMenu}>
-        <div className="px-2 pt-2 pb-3 space-y-1">
-          <NavItem to="/" icon={Home}>Home</NavItem>
-          <NavItem to="/onlineplay" icon={Gamepad2}>Online Play</NavItem>
-          <NavItem to="/play" icon={Gamepad2}>Offline Play</NavItem>
-          <NavItem to="/profile" icon={User}>Profile</NavItem>
-          <NavItem to="/login" icon={LogIn}>Login</NavItem>
-          <NavItem to="/register" icon={UserPlus}>Register</NavItem>
-          <button
-            onClick={handleLogout}
-            className="flex items-center space-x-2 text-gray-300 hover:text-white hover:bg-gray-700 px-3 py-2 rounded-md text-sm font-medium w-full"
-          >
-            <LogOut size={18} />
+        <div className="hidden items-center gap-1 lg:flex">{renderLinks()}</div>
+
+        <div className="hidden items-center gap-2 lg:flex">
+          <NavLink to="/login" className={linkClass}>
+            <LogIn size={17} />
+            <span>Login</span>
+          </NavLink>
+          <NavLink to="/register" className={linkClass}>
+            <UserPlus size={17} />
+            <span>Register</span>
+          </NavLink>
+          <button onClick={handleLogout} className="inline-flex items-center gap-2 rounded-2xl px-3 py-2 text-sm font-semibold text-[#9CA3AF] hover:bg-white/10 hover:text-[#F9FAFB]">
+            <LogOut size={17} />
             <span>Logout</span>
           </button>
         </div>
-      </div>
-    </nav>
+
+        <button
+          onClick={() => setIsOpen((value) => !value)}
+          className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-[rgba(212,175,55,0.18)] text-[#F9FAFB] lg:hidden"
+          aria-label="Toggle navigation"
+          aria-expanded={isOpen}
+        >
+          {isOpen ? <X size={22} /> : <Menu size={22} />}
+        </button>
+      </nav>
+
+      {isOpen && (
+        <div className="border-t border-[rgba(212,175,55,0.18)] bg-[#111827] px-4 pb-5 lg:hidden">
+          <div className="mx-auto grid max-w-7xl gap-2 py-4 sm:grid-cols-2">
+            {renderLinks()}
+            <NavLink to="/login" className={linkClass} onClick={() => setIsOpen(false)}>
+              <LogIn size={17} />
+              <span>Login</span>
+            </NavLink>
+            <NavLink to="/register" className={linkClass} onClick={() => setIsOpen(false)}>
+              <UserPlus size={17} />
+              <span>Register</span>
+            </NavLink>
+            <button onClick={handleLogout} className="inline-flex items-center gap-2 rounded-2xl px-3 py-2 text-sm font-semibold text-[#9CA3AF] hover:bg-white/10 hover:text-[#F9FAFB]">
+              <LogOut size={17} />
+              <span>Logout</span>
+            </button>
+          </div>
+        </div>
+      )}
+    </header>
   );
 };
 
 export default Navbar;
-
-
-// import React, { useState } from 'react';
-// import { Link, useNavigate } from 'react-router-dom';
-
-// const Navbar = () => {
-//   const [isOpen, setIsOpen] = useState(false);
-//   const navigate = useNavigate();
-
-//   const toggleMenu = () => {
-//     setIsOpen(!isOpen);
-//   };
-
-//   return (
-//     <nav className="bg-gray-800 p-4">
-//       <div className="container mx-auto flex justify-between items-center">
-//         <div className="text-white text-2xl font-bold">MukhiyaChessApp</div>
-//         <div className="hidden md:flex space-x-4">
-//           <Link to="/onlineplay" className="text-gray-300 hover:text-white">OnlinePlay</Link>
-//           <Link to="/play" className="text-gray-300 hover:text-white">OfflinePlay</Link>
-//           <Link to="/" className="text-gray-300 hover:text-white">Home</Link>
-//           <Link to="/profile" className="text-gray-300 hover:text-white">Profile</Link>
-//           {/* <Link to="/leaderboard" className="text-gray-300 hover:text-white">Leaderboard</Link> */}
-//           <Link to="/login" className="text-gray-300 hover:text-white">Login</Link>
-//           <Link to="/register" className="text-gray-300 hover:text-white">Registration</Link>
-//           <button className="text-gray-300 hover:text-white"
-//             onClick={() => {
-//               localStorage.removeItem('authToken');
-//               navigate('/login');
-//             }}
-//           >LogOut</button>
-//         </div>
-//         <div className="md:hidden">
-//           <button onClick={toggleMenu} className="text-gray-300 hover:text-white focus:outline-none focus:text-white">
-//             <svg className="h-6 w-6" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-//               <path d="M4 6h16M4 12h16m-7 6h7" />
-//             </svg>
-//           </button>
-//         </div>
-//       </div>
-//       {isOpen && (
-//         <div className="md:hidden" onClick={ toggleMenu}>
-//           <Link to="/play" className="block text-gray-300 hover:text-white px-4 py-2">OfflinePlay</Link>
-//           <Link to="/onlineplay" className="block text-gray-300 hover:text-white px-4 py-2">OnlinePlay</Link>
-//           <Link to="/" className="block text-gray-300 hover:text-white px-4 py-2">Home</Link>
-//           <Link to="/profile" className="block text-gray-300 hover:text-white px-4 py-2">Profile</Link>
-//           {/* <Link to="puzzle" className="block text-gray-300 hover:text-white px-4 py-2">LeaderBoard</Link> */}
-//           <Link to="/login" className="block text-gray-300 hover:text-white px-4 py-2">Login</Link>
-//           <Link to="/register" className="block text-gray-300 hover:text-white px-4 py-2">Register</Link>
-//           <Link to="/logout" className="block text-gray-300 hover:text-white px-4 py-2">Logout</Link>
-//         </div>
-//       )}
-//     </nav>
-//   );
-// }
-
-// export default Navbar;

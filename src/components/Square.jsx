@@ -1,82 +1,32 @@
 import React from 'react';
 import Piece from './Piece';
 
+// Displays one board square with selection, move, and target states.
 export const Square = ({ piece, color, rowIndex, colIndex, onClick, selected, lastMove, highlight, isMobile }) => {
-  const backgroundColor = (rowIndex + colIndex) % 2 !== 0 ? 'bg-green-600' : 'bg-gray-500';
-  const selectedBackgroundColor = 'bg-blue-700';
-  const lastMoveSourceColor = 'bg-blue-500';
-  const lastMoveDestinationColor = 'bg-blue-400';
-
-  let cellBackgroundColor = backgroundColor;
-
-  if (selected) {
-    cellBackgroundColor = `${selectedBackgroundColor}`;
-  } else if (
-    lastMove &&
-    ((lastMove.fromRow === rowIndex && lastMove.fromCol === colIndex) ||
-      (lastMove.toRow === rowIndex && lastMove.toCol === colIndex))
-  ) {
-    cellBackgroundColor =
-      lastMove.fromRow === rowIndex && lastMove.fromCol === colIndex
-        ? lastMoveSourceColor
-        : lastMoveDestinationColor;
-  }
-
-  const pieceRotation = isMobile && color === 'white' ? 'transform rotate-180' : 'transform rotate-0';
+  const isDark = (rowIndex + colIndex) % 2 !== 0;
+  const isLastMove = lastMove && (
+    (lastMove.fromRow === rowIndex && lastMove.fromCol === colIndex) ||
+    (lastMove.toRow === rowIndex && lastMove.toCol === colIndex)
+  );
+  const baseColor = isDark ? 'bg-[#7D6A2E]' : 'bg-[#E8D8A0]';
+  const stateColor = selected ? 'bg-[#D4AF37]' : isLastMove ? 'bg-[#B8941F]' : baseColor;
+  const pieceRotation = isMobile && color === 'white' ? 'rotate-180' : '';
 
   return (
-    <div
-      className={`w-full h-12 md:w-full md:h-16 flex justify-center items-center cursor-pointer ${cellBackgroundColor} ${isMobile ? 'transform rotate-180' : ''}`}
+    <button
+      type="button"
+      className={`relative flex aspect-square h-full w-full items-center justify-center ${stateColor} ${isMobile ? 'rotate-180' : ''} focus:z-10 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]`}
       onClick={onClick}
+      aria-label={`Board square ${rowIndex + 1}, ${colIndex + 1}`}
     >
       {piece && (
-        <div className={`${pieceRotation} flex justify-center items-center w-full h-full`}>
+        <span className={`flex h-full w-full items-center justify-center ${pieceRotation}`}>
           <Piece piece={piece} color={color} />
-        </div>
+        </span>
       )}
       {highlight && (
-        <div className="absolute w-2 h-2 md:w-3 md:h-3 bg-yellow-400 rounded-full opacity-50"></div>
+        <span className="absolute h-4 w-4 rounded-full bg-[#111827]/55 ring-2 ring-[#D4AF37]/70" />
       )}
-    </div>
+    </button>
   );
 };
-
-
-// import React from 'react';
-// import Piece from './Piece';
-
-// export const Square = ({ piece, color, rowIndex, colIndex, onClick, selected, lastMove, highlight }) => {
-//   const backgroundColor = (rowIndex + colIndex) % 2 !== 0 ? 'bg-green-600' : 'bg-gray-500';
-//   const selectedBackgroundColor = 'bg-blue-700'; // Background color for the selected cell
-//   const lastMoveSourceColor = 'bg-blue-500'; // Background color for the source cell of the last move
-//   const lastMoveDestinationColor = 'bg-blue-400'; // Background color for the destination cell of the last move
-
-//   let cellBackgroundColor = backgroundColor;
-
-//   if (selected) {
-//     cellBackgroundColor = `${selectedBackgroundColor} `;
-//   } else if (
-//     lastMove &&
-//     ((lastMove.fromRow === rowIndex && lastMove.fromCol === colIndex) ||
-//       (lastMove.toRow === rowIndex && lastMove.toCol === colIndex))
-//   ) {
-//     cellBackgroundColor =
-//       lastMove.fromRow === rowIndex && lastMove.fromCol === colIndex
-//         ? lastMoveSourceColor
-//         : lastMoveDestinationColor;
-//   }
-
-//   return (
-//     <div
-//       className={`w-full h-12 md:w-full md:h-16 flex justify-center items-center cursor-pointer ${cellBackgroundColor}`}
-//       onClick={onClick}
-//     >
-//       {piece && <Piece piece={piece} color={color} />}
-//       {highlight && <div className="absolute w-2 h-2 md:w-3 md:h-3 bg-yellow-400 rounded-full opacity-50"></div>}
-//     </div>
-//   );
-// };
-
-
-
-

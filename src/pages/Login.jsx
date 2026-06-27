@@ -1,230 +1,143 @@
-// import React, { useState } from 'react';
-// import axios from 'axios';
-// import { useNavigate } from 'react-router-dom';
-// import { backendUrl } from '../components/helper';
-
-// const Login = () => {
-//     const [email, setEmail] = useState('');
-//     const [password, setPassword] = useState('');
-//     const [error, setError] = useState('');
-//     const [isLoading, setIsLoading] = useState(false);
-//     const navigate = useNavigate();
-
-//     const handleSubmit = async (e) => {
-//         e.preventDefault();
-//         setError('');
-//         setIsLoading(true);
-//         try {
-//             const res = await axios.post(`${backendUrl}/api/players/login`, {
-//                 email,
-//                 password
-//             });
-//             localStorage.setItem('authToken', res.data.token);
-//             localStorage.setItem('playerId', res.data.id);
-//             setIsLoading(false);
-//             navigate('/');
-//         } catch (err) {
-//             setIsLoading(false);
-//             console.error(err);
-//             setError(err.response?.data?.message || 'Invalid credentials');
-//         }
-//     };
-
-//     return (
-//         <div className="flex justify-center items-center h-screen bg-gray-100">
-//             <form onSubmit={handleSubmit} className="bg-white p-6 rounded shadow-md w-full max-w-sm">
-//                 <h2 className="text-2xl mb-4 text-center">Login</h2>
-//                 <div className="mb-4">
-//                     <label className="block mb-2">Email</label>
-//                     <input
-//                         type="email"
-//                         value={email}
-//                         onChange={(e) => setEmail(e.target.value)}
-//                         className="w-full p-2 border border-gray-300 rounded"
-//                         required
-//                     />
-//                 </div>
-//                 <div className="mb-4">
-//                     <label className="block mb-2">Password</label>
-//                     <input
-//                         type="password"
-//                         value={password}
-//                         onChange={(e) => setPassword(e.target.value)}
-//                         className="w-full p-2 border border-gray-300 rounded"
-//                         required
-//                     />
-//                 </div>
-//                 <button 
-//                     type="submit" 
-//                     className="w-full bg-blue-500 text-white py-2 rounded disabled:bg-blue-300"
-//                     disabled={isLoading}
-//                 >
-//                     {isLoading ? 'Logging in...' : 'Login'}
-//                 </button>
-//                 {error && <div className="text-red-500 mt-4">{error}</div>}
-//             </form>
-//         </div>
-//     );
-// };
-
-// export default Login;
-
 import React, { useState } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { GoogleLogin } from '@react-oauth/google';
+import { Link, useNavigate } from 'react-router-dom';
+import { LogIn, Mail, Shield } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { backendUrl } from '../components/helper';
-import toast, { Toaster } from 'react-hot-toast';
+import Button from '../components/ui/Button';
+import Card from '../components/ui/Card';
+import PageShell from '../components/ui/PageShell';
+import { getFriendlyErrorMessage } from '../utils/userMessages';
 
+const googleClientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
+
+// Handles player sign-in and local session persistence.
 const Login = () => {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
 
-    const navigate = useNavigate();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setError('');
+    setIsLoading(true);
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setIsLoading(true);
-        try {
-            const res = await axios.post(`${backendUrl}/api/players/login`, {
-                email,
-                password
-            });
-            localStorage.setItem('authToken', res.data.token);
-            localStorage.setItem('playerId', res.data.id);
-            toast.success('Login successful!', {
-                style: {
-                    border: '1px solid #4caf50',
-                    padding: '16px',
-                    color: '#4caf50',
-                },
-                iconTheme: {
-                    primary: '#4caf50',
-                    secondary: '#FFFAEE',
-                },
-            });
-            setIsLoading(false);
-            navigate('/');
-        } catch (err) {
-            setIsLoading(false);
-            const errorMsg = err.response?.data?.message || 'Invalid credentials';
-            setError(err.response?.data?.message || 'Invalid credentials');
-            toast.error(errorMsg, {
-                style: {
-                    border: '1px solid #f44336',
-                    padding: '16px',
-                    color: '#f44336',
-                },
-                iconTheme: {
-                    primary: '#f44336',
-                    secondary: '#FFFAEE',
-                },
-            });
-        }
-    };
+    try {
+      const response = await axios.post(`${backendUrl}/api/players/login`, { email, password });
+      localStorage.setItem('authToken', response.data.token);
+      localStorage.setItem('playerId', response.data.id);
+      toast.success('Welcome back to Mukhiya Chess.');
+      navigate('/');
+    } catch (err) {
+      const message = getFriendlyErrorMessage(err, 'Email or password is incorrect.');
+      setError(message);
+      toast.error(message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    return (
-        <div className="flex justify-center items-center h-screen bg-gray-100">
-            <form onSubmit={handleSubmit} className="bg-white p-6 rounded shadow-md w-full max-w-sm">
-                <h2 className="text-2xl mb-4 text-center text-gray-700 font-semibold">Login</h2>
-                <div className="mb-4">
-                    <label className="block mb-2 text-gray-600">Email</label>
-                    <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Enter your email"
-                        required
-                    />
-                </div>
-                <div className="mb-4">
-                    <label className="block mb-2 text-gray-600">Password</label>
-                    <input
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Enter your password"
-                        required
-                    />
-                </div>
-                {error && <div className="text-red-500 mt-4">{error}</div>}
-                <button 
-                    type="submit" 
-                    className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition duration-200 disabled:bg-blue-300"
-                    disabled={isLoading}
-                >
-                    {isLoading ? 'Logging in...' : 'Login'}
-                </button>
-            </form>
+  const handleGoogleSuccess = async ({ credential }) => {
+    setError('');
+    setIsLoading(true);
+
+    try {
+      const response = await axios.post(`${backendUrl}/api/players/google`, { credential });
+      localStorage.setItem('authToken', response.data.token);
+      localStorage.setItem('playerId', response.data.id);
+      toast.success('Signed in with Google.');
+      navigate('/');
+    } catch (err) {
+      const message = getFriendlyErrorMessage(err, 'Google sign-in could not be completed.');
+      setError(message);
+      toast.error(message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <PageShell>
+      <div className="grid min-h-[calc(100vh-12rem)] items-center gap-8 lg:grid-cols-[0.9fr_1.1fr]">
+        <div className="space-y-5">
+          <span className="inline-flex items-center gap-2 rounded-full border border-[rgba(212,175,55,0.18)] bg-white/5 px-4 py-2 text-sm font-semibold text-[#D4AF37]">
+            <Shield size={16} /> Secure player access
+          </span>
+          <h1 className="text-4xl font-extrabold sm:text-6xl">Return to your arena.</h1>
+          <p className="max-w-xl text-lg leading-8 text-[#9CA3AF]">
+            Sign in to create rooms, track points, review match history, and continue building your chess profile.
+          </p>
         </div>
-    );
+
+        <Card className="mx-auto w-full max-w-md p-6 sm:p-8">
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <h2 className="text-2xl font-bold">Login</h2>
+              <p className="mt-2 text-sm text-[#9CA3AF]">Use your registered email and password.</p>
+            </div>
+            <label className="block text-sm font-semibold text-[#F9FAFB]">
+              Email
+              <span className="mt-2 flex items-center gap-3 rounded-2xl border border-[rgba(212,175,55,0.18)] bg-white/5 px-4 py-3">
+                <Mail size={18} className="text-[#D4AF37]" />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  className="w-full bg-transparent text-[#F9FAFB] outline-none placeholder:text-[#9CA3AF]"
+                  placeholder="you@example.com"
+                  required
+                />
+              </span>
+            </label>
+            <label className="block text-sm font-semibold text-[#F9FAFB]">
+              Password
+              <input
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                className="mt-2 w-full rounded-2xl border border-[rgba(212,175,55,0.18)] bg-white/5 px-4 py-3 text-[#F9FAFB] outline-none placeholder:text-[#9CA3AF]"
+                placeholder="Enter your password"
+                required
+              />
+            </label>
+            {error && <p className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{error}</p>}
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              <LogIn size={18} />
+              {isLoading ? 'Logging in...' : 'Login'}
+            </Button>
+            <div className="relative py-1 text-center text-xs font-semibold uppercase tracking-[0.2em] text-[#9CA3AF]">
+              or
+            </div>
+            {googleClientId ? (
+              <div className="overflow-hidden rounded-2xl border border-[rgba(212,175,55,0.18)] bg-white p-2">
+                <GoogleLogin
+                  onSuccess={handleGoogleSuccess}
+                  onError={() => {
+                    const message = 'Google sign-in could not be completed.';
+                    setError(message);
+                    toast.error(message);
+                  }}
+                  theme="filled_black"
+                  shape="pill"
+                  width="100%"
+                />
+              </div>
+            ) : (
+              <p className="rounded-2xl border border-[rgba(212,175,55,0.18)] bg-white/5 px-4 py-3 text-center text-sm text-[#9CA3AF]">
+                Google sign-in is not configured yet.
+              </p>
+            )}
+            <p className="text-center text-sm text-[#9CA3AF]">
+              New here? <Link to="/register" className="font-semibold text-[#D4AF37] hover:text-[#B8941F]">Create an account</Link>
+            </p>
+          </form>
+        </Card>
+      </div>
+    </PageShell>
+  );
 };
 
 export default Login;
-
-
-
-// import React, { useState } from 'react';
-// import axios from 'axios';
-// import { useNavigate } from 'react-router-dom';
-// import {backendUrl} from '../components/helper'
-
-// const Login = () => {
-//     const [email, setEmail] = useState('');
-//     const [password, setPassword] = useState('');
-//     const navigate = useNavigate();
-//     // const backendUrl = "https://chess-backend-kf5d.onrender.com";
-
-//     const handleSubmit = async (e) => {
-//         e.preventDefault();
-//         try {
-//             const res = await axios.post(`${backendUrl}/api/players/login`, {
-//                 email,
-//                 password
-//             });
-
-//             localStorage.setItem('authToken', res.data.token); // Save the authentication token
-//             localStorage.setItem('playerId', res.data.id); // Save the player's _id
-//             console.log( res.data.id );
-
-
-//             navigate('/');
-//         } catch (err) {
-//             console.error(err);
-//         }
-//     };
-
-//     return (
-//         <div className="flex justify-center items-center h-screen bg-gray-100">
-//             <form onSubmit={handleSubmit} className="bg-white p-6 rounded shadow-md w-full max-w-sm">
-//                 <h2 className="text-2xl mb-4 text-center">Login</h2>
-//                 <div className="mb-4">
-//                     <label className="block mb-2">Email</label>
-//                     <input
-//                         type="email"
-//                         value={email}
-//                         onChange={(e) => setEmail(e.target.value)}
-//                         className="w-full p-2 border border-gray-300 rounded"
-//                         required
-//                     />
-//                 </div>
-//                 <div className="mb-4">
-//                     <label className="block mb-2">Password</label>
-//                     <input
-//                         type="password"
-//                         value={password}
-//                         onChange={(e) => setPassword(e.target.value)}
-//                         className="w-full p-2 border border-gray-300 rounded"
-//                         required
-//                     />
-//                 </div>
-//                 <button type="submit" className="w-full bg-blue-500 text-white py-2 rounded">Login</button>
-//             </form>
-//         </div>
-//     );
-// };
-
-// export default Login;
