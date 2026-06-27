@@ -112,7 +112,7 @@ const Login = () => {
               or
             </div>
             {googleClientId ? (
-              <div className="overflow-hidden rounded-2xl border border-[rgba(212,175,55,0.18)] bg-white p-2">
+              <div className="overflow-hidden rounded-2xl border border-[rgba(212,175,55,0.18)] bg-[#D4AF37] p-2">
                 <GoogleLogin
                   onSuccess={handleGoogleSuccess}
                   onError={() => {
