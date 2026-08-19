@@ -1,5 +1,5 @@
-// export const backendUrl = 'http://localhost:5000';
-export const backendUrl = 'https://chess-backend-kf5d.onrender.com';
+export const backendUrl = 'http://localhost:5000';
+// export const backendUrl = 'https://chess-backend-kf5d.onrender.com';
 
 // Creates the initial chess board state.
 export const initializeBoard = () => {

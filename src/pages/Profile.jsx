@@ -91,7 +91,7 @@ const Profile = () => {
             <p className="mt-4 text-3xl font-extrabold">{wins}</p>
             <p className="text-sm text-[#9CA3AF]">Wins</p>
           </Card>
-          <Card className="p-6 sm:col-span-3">
+          <Card className="p-6 col-span-3">
             <p className="flex items-center gap-2 text-[#9CA3AF]">
               <Calendar size={18} className="text-[#D4AF37]" />
               Joined {new Date(player.createdAt).toLocaleDateString()}

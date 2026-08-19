@@ -1,4 +1,4 @@
-import React from 'react';
+import { React } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Activity, ArrowRight, BarChart3, Brain, Crown, Gauge, Globe2, ShieldCheck, Sparkles, Swords, Trophy } from 'lucide-react';
@@ -40,6 +40,8 @@ const testimonials = [
 
 // Builds the premium homepage sections requested in the brief.
 function Home() {
+
+
   return (
     <PageShell className="overflow-hidden">
       <section className="grid min-h-[calc(100vh-7rem)] items-center gap-10 py-10 lg:grid-cols-[1.05fr_0.95fr]">
@@ -66,7 +68,7 @@ function Home() {
           </div>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.7, delay: 0.1 }}>
+        <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 1, delay: 0.4 }}>
           <Card className="p-4">
             <div className="grid aspect-square grid-cols-8 overflow-hidden rounded-2xl border border-[rgba(212,175,55,0.18)]">
               {Array.from({ length: 64 }).map((_, index) => {
@@ -85,7 +87,7 @@ function Home() {
         </motion.div>
       </section>
 
-      <section className="grid gap-4 py-8 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="grid gap-4 py-8 grid-cols-2 lg:grid-cols-4">
         {stats.map(([value, label]) => (
           <Card key={label} className="p-6">
             <p className="text-3xl font-extrabold text-[#D4AF37]">{value}</p>
@@ -99,7 +101,7 @@ function Home() {
           <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#D4AF37]">Why Choose Mukhiya Chess</p>
           <h2 className="mt-3 text-3xl font-bold sm:text-4xl">Built for serious play without losing elegance.</h2>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 grid-cols-2">
           {features.map(({ icon: Icon, title, text }) => (
             <Card key={title} className="p-6">
               <Icon className="h-8 w-8 text-[#D4AF37]" />
@@ -137,14 +139,26 @@ function Home() {
         </div>
       </section>
 
-      <section className="grid gap-4 py-14 lg:grid-cols-3">
+
+      <section className="flex gap-4 overflow-x-auto py-14 scrollbar-hide snap-x snap-mandatory">
+        {testimonials.map(([name, quote]) => (
+          <Card
+            key={name}
+            className="min-w-[320px] max-w-[320px] flex-shrink-0 p-6 snap-start"
+          >
+            <p className="text-base leading-7 text-[#F9FAFB]">"{quote}"</p>
+            <p className="mt-5 text-sm font-semibold text-[#D4AF37]">{name}</p>
+          </Card>
+        ))}
+      </section>
+      {/* <section className="grid gap-4 py-14 grid-cols-2 lg:grid-cols-3">
         {testimonials.map(([name, quote]) => (
           <Card key={name} className="p-6">
             <p className="text-base leading-7 text-[#F9FAFB]">"{quote}"</p>
             <p className="mt-5 text-sm font-semibold text-[#D4AF37]">{name}</p>
           </Card>
         ))}
-      </section>
+      </section> */}
 
       <section className="grid gap-6 py-14 lg:grid-cols-[0.9fr_1.1fr]">
         <Card className="p-8">
