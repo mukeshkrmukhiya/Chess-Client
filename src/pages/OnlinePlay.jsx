@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import io from 'socket.io-client';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -10,11 +10,13 @@ import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import PageShell from '../components/ui/PageShell';
 
-const socket = io(backendUrl);
+// const socket = io(backendUrl);
 const timeControls = [10, 15, 30];
+
 
 // Manages online lobby creation, joining, and matchmaking.
 const OnlinePlay = () => {
+  // ─── State ──────────────────────────────────────────────────────────────
   const [playerId, setPlayerId] = useState(null);
   const [gameCode, setGameCode] = useState('');
   const [gameInfo, setGameInfo] = useState(null);
@@ -32,26 +34,56 @@ const OnlinePlay = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSearchingRandom, setIsSearchingRandom] = useState(false);
   const [searchStatus, setSearchStatus] = useState('');
+
+  // Disconnect grace-period state
+  const [opponentDisconnected, setOpponentDisconnected] = useState(false);
+  const [reconnectCountdown, setReconnectCountdown] = useState(0);
+
+  // ─── Refs ────────────────────────────────────────────────────────────────
+  // Ref keeps latest playerId accessible inside socket callbacks
+  // without stale closure problems
+  const playerIdRef = useRef(null);
+  const playerColorRef = useRef('white');
+  const socketRef = useRef(null);    // socket lives here, NOT at module level
+  const countdownRef = useRef(null);    // countdown interval handle
+
   const navigate = useNavigate();
 
+  // ─── Auth + Socket Setup ─────────────────────────────────────────────────
   useEffect(() => {
     const token = localStorage.getItem('authToken');
     const storedPlayerId = localStorage.getItem('playerId');
-    if (storedPlayerId && token) {
-      setPlayerId(storedPlayerId);
-    } else {
+
+    if (!storedPlayerId || !token) {
       toast.error('Please login to play online.');
       navigate('/login');
+      return;
     }
 
+    setPlayerId(storedPlayerId);
+    playerIdRef.current = storedPlayerId;
+
+    // Create socket AFTER confirming auth.
+    // Pass playerId in auth so server can detect reconnects immediately on connect.
+    const socket = io(backendUrl, {
+      auth: { playerId: storedPlayerId, token }
+    });
+    socketRef.current = socket;
+
+    // ── gameState ────────────────────────────────────────────────────────
     socket.on('gameState', ({ players, currentTurn }) => {
       setCurrentTurn(currentTurn);
-      const player = players.find((entry) => entry.id === playerId);
-      const opponent = players.find((entry) => entry.id !== playerId);
+
+      // Use ref — avoids stale closure where playerId was null at listener creation
+      const pid = playerIdRef.current;
+      const player = players.find((entry) => entry.id === pid);
+      const opponent = players.find((entry) => entry.id !== pid);
 
       if (player) {
         setPlayerUsername(player.username);
         setPlayerColor(player.color);
+        playerColorRef.current = player.color;
+
         if (opponent) {
           setOpponentUsername(opponent.username);
           setGameStatus('started');
@@ -61,18 +93,154 @@ const OnlinePlay = () => {
       }
     });
 
+    // ── opponentJoined ───────────────────────────────────────────────────
     socket.on('opponentJoined', () => {
       setSearchStatus('Opponent joined. Starting game...');
       toast.success('Opponent joined. Starting game...');
     });
 
+    // ── opponent_disconnected ────────────────────────────────────────────
+    // Fires when opponent's tab closes / browser backgrounds / internet cuts
+    socket.on('opponent_disconnected', ({ graceSeconds, message }) => {
+      console.log("Emitting opponent_disconnected");
+      console.log("Opponent socket: opponent_disconnected", graceSeconds);
+      setOpponentDisconnected(true);
+      setReconnectCountdown(graceSeconds);
+      toast(message, { icon: '⏳' });
+
+      // Tick countdown down every second
+      clearInterval(countdownRef.current);
+      countdownRef.current = setInterval(() => {
+        setReconnectCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(countdownRef.current);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    });
+
+    // ── opponent_reconnected ─────────────────────────────────────────────
+    // Opponent came back within grace period
+    socket.on('opponent_reconnected', ({ message }) => {
+      setOpponentDisconnected(false);
+      setReconnectCountdown(0);
+      clearInterval(countdownRef.current);
+      toast.success(message);
+    });
+
+    // ── game_over ────────────────────────────────────────────────────────
+    // Grace period expired — opponent forfeited
+    socket.on('game_over', ({ reason, winnerColor, message }) => {
+      console.log("Emitting game_over ..... reason:", reason, "winnerColor:", winnerColor, "message:", message);
+      clearInterval(countdownRef.current);
+      setOpponentDisconnected(false);
+      setGameStatus('finished');
+
+      const isWinner = winnerColor === playerColorRef.current;
+      if (isWinner) {
+        toast.success(message || 'You win!');
+      } else {
+        toast.error(message || 'You lost.');
+      }
+    });
+
+    // ── game_resumed ─────────────────────────────────────────────────────
+    // YOU reconnected after disconnecting — restore board
+    socket.on('game_resumed', ({ game }) => {
+      if (game?.gameCode) {
+        setGameCode(game.gameCode);
+        setGameStatus('started');
+        setGameStarted(true);
+      }
+      toast.success('Reconnected! Game resumed.');
+    });
+
+    // ── Cleanup on unmount ───────────────────────────────────────────────
     return () => {
       socket.off('gameState');
       socket.off('opponentJoined');
+      socket.off('opponent_disconnected');
+      socket.off('opponent_reconnected');
+      socket.off('game_over');
+      socket.off('game_resumed');
+      clearInterval(countdownRef.current);
+      socket.disconnect();   // close connection cleanly when leaving the page
     };
-  }, [navigate, playerId]);
+  }, [navigate]); // no playerId in deps — we use the ref instead
+
+  // ─── Leave Game ──────────────────────────────────────────────────────────
+  // Call this wherever your leave/exit button is rendered
+  const handleLeaveGame = () => {
+    socketRef.current?.emit('leaveGame', { gameCode, playerId: playerIdRef.current });
+
+    // Reset all game state so next visit starts fresh
+    setGameStarted(false);
+    setGameStatus('waiting');
+    setGameCode('');
+    setGameInfo(null);
+    setOpponentUsername('');
+    setPlayerColor('white');
+    playerColorRef.current = 'white';
+    setOpponentDisconnected(false);
+    setReconnectCountdown(0);
+    clearInterval(countdownRef.current);
+  };
+
+  // ─── Disconnect Banner ───────────────────────────────────────────────────
+  const renderDisconnectBanner = () => {
+    if (!opponentDisconnected) return null;
+    return (
+      <div className="bg-yellow-500/20 border border-yellow-500 text-yellow-300 rounded-lg p-3 text-sm text-center">
+        ⚠️ Opponent disconnected — waiting for reconnection ({reconnectCountdown}s)
+      </div>
+    );
+  };
+
+  // useEffect(() => {
+  //   const token = localStorage.getItem('authToken');
+  //   const storedPlayerId = localStorage.getItem('playerId');
+  //   if (storedPlayerId && token) {
+  //     setPlayerId(storedPlayerId);
+  //   } else {
+  //     toast.error('Please login to play online.');
+  //     navigate('/login');
+  //   }
+
+
+  //   socket.on('gameState', ({ players, currentTurn }) => {
+  //     setCurrentTurn(currentTurn);
+  //     const player = players.find((entry) => entry.id === playerId);
+  //     const opponent = players.find((entry) => entry.id !== playerId);
+
+  //     if (player) {
+  //       setPlayerUsername(player.username);
+  //       setPlayerColor(player.color);
+  //       if (opponent) {
+  //         setOpponentUsername(opponent.username);
+  //         setGameStatus('started');
+  //         setGameStarted(true);
+  //         setSearchStatus('');
+  //       }
+  //     }
+  //   });
+
+  //   socket.on('opponentJoined', () => {
+  //     setSearchStatus('Opponent joined. Starting game...');
+  //     toast.success('Opponent joined. Starting game...');
+  //   });
+
+
+
+  //   return () => {
+  //     socket.off('gameState');
+  //     socket.off('opponentJoined');
+  //   };
+  // }, [navigate, playerId]);
 
   const handleRandomMatch = async () => {
+    const socket = socketRef.current;
     if (!playerId || !selectedTime) {
       setError('Please select a time control before searching.');
       toast.error('Please select a time control before searching.');
@@ -91,9 +259,9 @@ const OnlinePlay = () => {
       setGameCode(response.data.gameCode);
       setPlayerUsername(response.data.username);
       setPlayerColor(response.data.color);
-      setSearchStatus('Game found. Waiting for opponent...');
+      setSearchStatus('Game Created. Waiting for opponent...');
       socket.emit('joinRoom', { gameCode: response.data.gameCode, playerId, username: response.data.username });
-      toast.success('Game found. Waiting for opponent...');
+      toast.success('Game created. Waiting for opponent...');
     } catch (err) {
       setError('Failed to join random game. Please try again.');
       setSearchStatus('');
@@ -105,6 +273,7 @@ const OnlinePlay = () => {
   };
 
   const handleCreateGame = async () => {
+    const socket = socketRef.current;
     if (!playerId || !selectedTime) {
       setError('Please select a time before creating a game.');
       toast.error('Please select a time before creating a game.');
@@ -133,6 +302,7 @@ const OnlinePlay = () => {
   };
 
   const handleJoinGame = async () => {
+    const socket = socketRef.current;
     if (!joinGameCode || !playerId) {
       setError('Please enter a valid game code.');
       toast.error('Please enter a valid game code.');
@@ -181,22 +351,52 @@ const OnlinePlay = () => {
       });
   };
 
+  // ─── Board View (game in progress) ──────────────────────────────────────
   if (gameStarted) {
     return (
-      <OnlineChessBoard
-        socket={socket}
-        gameCode={gameCode}
-        playerId={playerId}
-        playerUsername={playerUsername}
-        opponentUsername={opponentUsername}
-        selectedTime={selectedTime}
-        currentGameStatus={gameStatus}
-        gameInfo={gameInfo}
-        playerColour={playerColor}
-        currentTurn={currentTurn}
-      />
+      <div className="space-y-4">
+        {renderDisconnectBanner()}
+        <OnlineChessBoard
+          socket={socketRef.current}        // pass ref value, not a stale module-level socket
+          gameCode={gameCode}
+          playerId={playerId}
+          playerUsername={playerUsername}
+          opponentUsername={opponentUsername}
+          selectedTime={selectedTime}
+          currentGameStatus={gameStatus}
+          gameInfo={gameInfo}
+          playerColour={playerColor}
+          currentTurn={currentTurn}
+          copyGameCode={copyGameCode}
+          copyButtonText={copyButtonText}
+          copyButtonDisabled={copyButtonDisabled}
+          onLeave={handleLeaveGame}         // pass leave handler down to board's exit button
+        />
+      </div>
     );
   }
+
+
+
+  // if (gameStarted) {
+  //   return (
+  //     <div className="space-y-4">
+  // {renderDisconnectBanner()}
+  //     <OnlineChessBoard
+  //       socket={socket}
+  //       gameCode={gameCode}
+  //       playerId={playerId}
+  //       playerUsername={playerUsername}
+  //       opponentUsername={opponentUsername}
+  //       selectedTime={selectedTime}
+  //       currentGameStatus={gameStatus}
+  //       gameInfo={gameInfo}
+  //       playerColour={playerColor}
+  //       currentTurn={currentTurn}
+  //       onLeave={handleLeaveGame}         
+  //     /> </div>
+  //   );
+  // }
 
   return (
     <PageShell>
@@ -264,3 +464,4 @@ const OnlinePlay = () => {
 };
 
 export default OnlinePlay;
+

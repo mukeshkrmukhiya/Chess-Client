@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+// import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import toast from 'react-hot-toast';
-import { Clock, Maximize, Minimize, Settings, Volume2, X } from 'lucide-react';
+import { Clock, Maximize, Minimize, Settings, Volume2, Copy, X } from 'lucide-react';
 import { isLegalMove, shouldPromotePawn, isLegalMoveConsideringCheck, initializeBoard, isInCheck, isCheckmate, canCastle, performCastling } from './helper';
 import { Square } from './Square';
 import GameOverModal from './GameOverModal';
@@ -10,11 +10,11 @@ import PromotionDialog from './PromotionDialog';
 import { PlayerInfo } from './PlayerInfo';
 import BoardFrame from './BoardFrame';
 import { backendUrl } from '../components/helper';
-import Button from './ui/Button';
+// import Button from './ui/Button';
 import Card from './ui/Card';
 
 // Runs the online chess board while preserving existing socket gameplay.
-const OnlineChessBoard = ({ socket, gameCode, playerId, playerUsername, opponentUsername, selectedTime, currentGameStatus, gameInfo, playerColour, currentTurn }) => {
+const OnlineChessBoard = ({ socket, gameCode, playerId, playerUsername, opponentUsername, selectedTime, currentGameStatus, gameInfo, playerColour, currentTurn, onLeave, copyButtonDisabled, copyGameCode, copyButtonText }) => {
   const [board, setBoard] = useState(initializeBoard());
   const [selectedPiece, setSelectedPiece] = useState(null);
   const [legalMoves, setLegalMoves] = useState([]);
@@ -37,7 +37,7 @@ const OnlineChessBoard = ({ socket, gameCode, playerId, playerUsername, opponent
   const [rematchState, setRematchState] = useState({ requested: false, accepted: false, requestedBy: null });
   const boardRef = useRef(null);
   const moveAudioRef = useRef(new Audio('assets/audio/move-sound.mp3'));
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
 
   // Applies a server-broadcast move to the local board copy.
   const applyMove = useCallback((boardState, move) => {
@@ -100,6 +100,8 @@ const OnlineChessBoard = ({ socket, gameCode, playerId, playerUsername, opponent
   }, [selectedTime]);
 
   useEffect(() => {
+
+
     socket.on('gameState', ({ players, currentTurn }) => {
       setTurn(currentTurn);
       if (players && players.length > 0) {
@@ -292,7 +294,18 @@ const OnlineChessBoard = ({ socket, gameCode, playerId, playerUsername, opponent
   };
 
   useEffect(() => {
-    socket.on('rematchRequested', ({ requestingPlayerId }) => setRematchState({ requested: true, accepted: false, requestedBy: requestingPlayerId }));
+    // socket.on('rematchRequested', ({ requestingPlayerId }) => setRematchState({ requested: true, accepted: false, requestedBy: requestingPlayerId }));
+    socket.on('rematchRequested', ({ requestingPlayerId }) => {
+      setRematchState({
+        requested: true,
+        accepted: false,
+        requestedBy: requestingPlayerId
+      });
+
+      // Open Game Over modal for opponent
+      setModalVisible(true);
+    });
+
     socket.on('rematchAccepted', () => {
       setRematchState({ requested: false, accepted: true, requestedBy: null });
       resetGame();
@@ -332,10 +345,12 @@ const OnlineChessBoard = ({ socket, gameCode, playerId, playerUsername, opponent
   };
 
   // Leaves the current online room.
-  const handleLeaveGame = () => {
-    socket.emit('leaveGame', { gameCode, playerId });
-    navigate('/');
-  };
+  // const handleLeaveGame = () => {
+  //   socket.emit('leaveGame', { gameCode, playerId });
+  //   navigate('/');
+  // };
+
+
 
   // Toggles browser fullscreen for the game frame.
   const toggleFullscreen = () => {
@@ -374,70 +389,355 @@ const OnlineChessBoard = ({ socket, gameCode, playerId, playerUsername, opponent
     toRow: playerColor === 'black' ? 7 - lastMove.toRow : lastMove.toRow,
     toCol: playerColor === 'black' ? 7 - lastMove.toCol : lastMove.toCol
   };
-
   return (
-    <main className="min-h-screen bg-[#111827] px-4 py-6 text-[#F9FAFB] sm:px-6 lg:px-8" ref={boardRef}>
-      <div className="mx-auto grid max-w-7xl gap-4">
-        <Card className="p-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <main
+      ref={boardRef}
+      className="h-screen overflow-hidden bg-[#111827] text-[#F9FAFB]"
+    >
+      <div className="mx-auto flex h-full w-full max-w-[1600px] flex-col">
 
-            <Button onClick={handleLeaveGame} variant="danger"><X size={18} /> Leave Game</Button>
-            <div className={`rounded-2xl px-4 py-3 text-center text-sm font-bold ${turn === playerColor ? 'bg-green-500/15 text-green-300' : 'bg-red-500/15 text-red-300'}`}>
-              {turn === playerColor ? 'Your turn' : "Opponent's turn"}
-            </div>
-            <div className="flex gap-2">
-              <button onClick={() => setSoundEnabled((value) => !value)} className={`rounded-2xl p-3 ${soundEnabled ? 'bg-[#D4AF37] text-gray-950' : 'bg-white/10 text-[#F9FAFB]'}`} aria-label="Toggle sound"><Volume2 size={18} /></button>
-              <button onClick={toggleFullscreen} className="rounded-2xl bg-white/10 p-3 text-[#F9FAFB]" aria-label="Toggle fullscreen">{isFullscreen ? <Minimize size={18} /> : <Maximize size={18} />}</button>
-            </div>
-          </div>
-        </Card>
+        {/* Controls */}
+        <div className="shrink-0 px-2 py-2 sm:px-4 sm:py-3 lg:px-6">
+          <Card className="p-2 sm:p-3">
+            <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
 
+              {/* Sound */}
+              <button
+                type="button"
+                onClick={() =>
+                  setSoundEnabled((value) => !value)
+                }
+                className={`flex h-9 items-center justify-center gap-2 rounded-lg text-xs font-semibold transition sm:h-11 sm:rounded-xl sm:text-sm ${soundEnabled
+                  ? "bg-[#D4AF37] text-gray-950"
+                  : "bg-white/10 text-[#F9FAFB]"
+                  }`}
+                aria-label="Toggle sound"
+              >
+                <Volume2 size={17} />
+                <span className="hidden sm:inline">
+                  Sound
+                </span>
+              </button>
 
-        <div className="grid gap-4 xl:grid-cols-[620px_270px] lg:justify-center">
-          <Card className=" justify-center p-3 sm:p-5 ">
-            {/* <div
-              className="w-full aspect-square"
-              style={{ maxWidth: "min(75vh, 1200px)" }}
-            > */}
-              <BoardFrame>
-                {getDisplayedBoard().map((row, rowIndex) => row.map((cell, colIndex) => (
-                  <Square
-                    key={`${rowIndex}-${colIndex}`}
-                    piece={cell ? cell.piece : null}
-                    color={cell ? cell.color : null}
-                    rowIndex={rowIndex}
-                    colIndex={colIndex}
-                    onClick={() => handleCellClick(rowIndex, colIndex)}
-                    selected={selectedPiece && ((playerColor === 'white' && selectedPiece.fromRow === rowIndex && selectedPiece.fromCol === colIndex) || (playerColor === 'black' && selectedPiece.fromRow === 7 - rowIndex && selectedPiece.fromCol === 7 - colIndex))}
-                    lastMove={displayedLastMove}
-                    highlight={legalMoves.some((move) => (playerColor === 'white' && move.row === rowIndex && move.col === colIndex) || (playerColor === 'black' && move.row === 7 - rowIndex && move.col === 7 - colIndex))}
-                  />
-                )))}
-              </BoardFrame>
-            {/* </div> */}
-          </Card>
+              {/* Fullscreen */}
+              <button
+                type="button"
+                onClick={toggleFullscreen}
+                className="flex h-9 items-center justify-center gap-2 rounded-lg bg-white/10 text-xs font-semibold text-[#F9FAFB] transition sm:h-11 sm:rounded-xl sm:text-sm"
+                aria-label="Toggle fullscreen"
+              >
+                {isFullscreen ? (
+                  <Minimize size={17} />
+                ) : (
+                  <Maximize size={17} />
+                )}
 
-          <aside className="grid gap-4">
-            <PlayerInfo name={currentPlayer} color={playerColor} time={formatTime(playerColor === 'white' ? whiteTime : blackTime)} isCurrentPlayer={turn === playerColor} />
-            <PlayerInfo name={opponentPlayer || 'Waiting...'} color={playerColor === 'white' ? 'black' : 'white'} time={formatTime(playerColor === 'white' ? blackTime : whiteTime)} isCurrentPlayer={turn !== playerColor} />
-            <Card className="p-5">
-              <div className="flex items-center gap-2"><Settings size={18} className="text-[#D4AF37]" /><h3 className="font-bold">Game Panel</h3></div>
-              <div className="mt-4 space-y-3 text-sm text-[#9CA3AF]">
-                <p className="flex items-center gap-2"><Clock size={16} /> {selectedTime} minute game</p>
-                <p>Room code: <span className="font-mono text-[#D4AF37]">{gameCode}</span></p>
-                <p>Status: {gameStatus}</p>
-                <p>Last move: {lastMove ? `${lastMove.fromRow},${lastMove.fromCol} to ${lastMove.toRow},${lastMove.toCol}` : 'No moves yet'}</p>
-                {gameInfo && <p>Game saved in history after completion.</p>}
+                <span className="hidden sm:inline">
+                  Full Screen
+                </span>
+              </button>
+
+              {/* Turn */}
+              <div
+                className={`flex h-9 items-center justify-center gap-1.5 rounded-lg px-1 text-center text-[11px] font-bold sm:h-11 sm:rounded-xl sm:px-3 sm:text-sm ${turn === playerColor
+                  ? "bg-green-500/15 text-green-300"
+                  : "bg-red-500/15 text-red-300"
+                  }`}
+              >
+                <span
+                  className={`h-2 w-2 shrink-0 rounded-full ${turn === playerColor
+                    ? "bg-green-400"
+                    : "bg-red-400"
+                    }`}
+                />
+
+                <span className="truncate">
+                  <span className="sm:hidden">
+                    {turn === playerColor ? "Your" : "Opp."}
+                  </span>
+
+                  <span className="hidden sm:inline">
+                    {turn === playerColor
+                      ? "Your turn"
+                      : "Opponent's turn"}
+                  </span>
+                </span>
               </div>
-            </Card>
-          </aside>
+
+              {/* Leave */}
+              <button
+                type="button"
+                onClick={onLeave}
+                className="flex h-9 items-center justify-center gap-1.5 rounded-lg bg-red-500/15 px-2 text-xs font-bold text-red-300 transition hover:bg-red-500/25 sm:h-11 sm:rounded-xl sm:text-sm"
+                aria-label="Leave game"
+              >
+                <X size={17} />
+
+                <span className="hidden sm:inline">
+                  Leave Game
+                </span>
+              </button>
+
+            </div>
+          </Card>
+        </div>
+
+
+        {/* Game area */}
+        <div
+          className="
+          min-h-0
+          flex-1
+          px-2
+          pb-2
+          sm:px-4
+          sm:pb-4
+          lg:px-6
+        "
+        >
+          <div
+            className="
+            grid
+            h-full
+            min-h-0
+            gap-2
+
+            lg:grid-cols-[220px_minmax(0,1fr)]
+            lg:gap-4
+          "
+          >
+            {/* Chess board */}
+            <section
+  className="
+    order-1
+    flex
+    w-full
+    shrink-0
+    min-w-0
+    items-start
+    justify-center
+    lg:order-2
+    lg:min-h-0
+    lg:items-center
+  "
+>
+  <div
+    className="
+      aspect-square
+      w-full
+      max-w-[calc(100vw-2rem)]
+      lg:max-w-[calc(100vh-150px)]
+    "
+    style={{
+      width: "min(100%, calc(100dvh - 80px))",
+    }}
+  >
+    <BoardFrame playerColor={playerColor}>
+      {getDisplayedBoard().map((row, rowIndex) =>
+        row.map((cell, colIndex) => (
+          <Square
+            key={`${rowIndex}-${colIndex}`}
+            piece={cell ? cell.piece : null}
+            color={cell ? cell.color : null}
+            rowIndex={rowIndex}
+            colIndex={colIndex}
+            onClick={() =>
+              handleCellClick(rowIndex, colIndex)
+            }
+            selected={
+              selectedPiece &&
+              (
+                playerColor === "white"
+                  ? selectedPiece.fromRow === rowIndex &&
+                    selectedPiece.fromCol === colIndex
+                  : selectedPiece.fromRow === 7 - rowIndex &&
+                    selectedPiece.fromCol === 7 - colIndex
+              )
+            }
+            lastMove={displayedLastMove}
+            highlight={legalMoves.some(
+              (move) =>
+                playerColor === "white"
+                  ? move.row === rowIndex &&
+                    move.col === colIndex
+                  : move.row === 7 - rowIndex &&
+                    move.col === 7 - colIndex
+            )}
+          />
+        ))
+      )}
+    </BoardFrame>
+  </div>
+</section>
+
+<aside
+              className="
+    order-2
+    grid
+    min-w-0
+    grid-cols-2
+    gap-1
+
+    md:order-1
+    md:grid-cols-1
+    md:grid-rows-[auto_auto_1fr]
+    md:gap-4
+  "
+            >
+              <PlayerInfo
+                name={currentPlayer}
+                color={playerColor}
+                time={formatTime(
+                  playerColor === "white"
+                    ? whiteTime
+                    : blackTime
+                )}
+                isCurrentPlayer={turn === playerColor}
+              />
+
+              <PlayerInfo
+                name={opponentPlayer || "Waiting..."}
+                color={
+                  playerColor === "white"
+                    ? "black"
+                    : "white"
+                }
+                time={formatTime(
+                  playerColor === "white"
+                    ? blackTime
+                    : whiteTime
+                )}
+                isCurrentPlayer={turn !== playerColor}
+              />
+
+              {/* Game Panel */}
+              <Card className="col-span-2 p-3 lg:col-span-1 lg:p-5">
+                <div className="flex items-center gap-2">
+                  <Settings
+                    size={17}
+                    className="text-[#D4AF37]"
+                  />
+
+                  <h3 className="text-sm font-bold sm:text-base">
+                    Game Panel
+                  </h3>
+                </div>
+
+                <div className="mt-3 space-y-2 text-xs text-[#9CA3AF] sm:mt-4 sm:space-y-3 sm:text-sm">
+
+                  <p className="flex items-center gap-2">
+                    <Clock
+                      size={15}
+                      className="shrink-0"
+                    />
+
+                    <span>
+                      {selectedTime} minute game
+                    </span>
+                  </p>
+
+                  {/* Room Code */}
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="min-w-0 truncate">
+                      Room code:
+                    </span>
+
+                    <div className="flex min-w-0 items-center gap-1.5">
+                      <span className="truncate font-mono text-[#D4AF37]">
+                        {gameCode}
+                      </span>
+
+                      <button
+                        type="button"
+                        onClick={copyGameCode}
+                        disabled={copyButtonDisabled}
+
+                        className="
+              flex
+              h-7
+              w-7
+              shrink-0
+              items-center
+              justify-center
+              rounded-lg
+              bg-white/10
+              text-[#F9FAFB]
+              transition
+              hover:bg-white/20
+              disabled:cursor-not-allowed
+              disabled:opacity-50
+            "
+                        aria-label="Copy room code"
+                        title="Copy room code"
+                      >
+                        <Copy size={14} />
+                        {copyButtonText}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Status */}
+                  <p>
+                    Status:{" "}
+                    <span className="text-[#F9FAFB]">
+                      {gameStatus}
+                    </span>
+                  </p>
+
+                  {/* Last Move */}
+                  <p className="truncate">
+                    Last move:{" "}
+                    <span className="text-[#F9FAFB]">
+                      {lastMove
+                        ? `${lastMove.fromRow},${lastMove.fromCol} to ${lastMove.toRow},${lastMove.toCol}`
+                        : "No moves yet"}
+                    </span>
+                  </p>
+
+                  {gameInfo && (
+                    <p className="text-green-300">
+                      Game saved in history after completion.
+                    </p>
+                  )}
+                </div>
+              </Card>
+            </aside>
+
+          </div>
         </div>
       </div>
 
-      {promotionChoice && <PromotionDialog onSelect={handlePromotionSelect} />}
-      {modalVisible && <GameOverModal winner={winner} gameOverReason={gameOverReason} rematchState={rematchState} playerId={playerId} handleRematchRequest={handleRematchRequest} handleRematchAccept={handleRematchAccept} handleRematchReject={handleRematchReject} toggleModal={() => setModalVisible(false)} gameCode={gameCode} />}
+
+      {promotionChoice && (
+        <PromotionDialog
+          onSelect={handlePromotionSelect}
+        />
+      )}
+
+      {modalVisible && (
+        <GameOverModal
+          winner={winner}
+          gameOverReason={gameOverReason}
+          rematchState={rematchState}
+          playerId={playerId}
+          handleRematchRequest={
+            handleRematchRequest
+          }
+          handleRematchAccept={
+            handleRematchAccept
+          }
+          handleRematchReject={
+            handleRematchReject
+          }
+          toggleModal={() =>
+            setModalVisible(false)
+          }
+          gameCode={gameCode}
+        />
+      )}
     </main>
   );
+
 };
 
 export default OnlineChessBoard;

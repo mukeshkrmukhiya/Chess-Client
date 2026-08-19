@@ -14,6 +14,7 @@ const navItems = [
 
 // Provides responsive primary navigation and session controls.
 const Navbar = () => {
+  const isLoggedIn = Boolean(localStorage.getItem('authToken'));
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
 
@@ -58,18 +59,23 @@ const Navbar = () => {
         <div className="hidden items-center gap-1 lg:flex">{renderLinks()}</div>
 
         <div className="hidden items-center gap-2 lg:flex">
-          <NavLink to="/login" className={linkClass}>
-            <LogIn size={17} />
-            <span>Login</span>
-          </NavLink>
+        {isLoggedIn ? (
+          <button onClick={handleLogout} className="inline-flex items-center gap-2 rounded-2xl px-3 py-2 text-sm font-semibold bg-orange-950 text-[#9CA3AF] hover:bg-white/10 hover:text-[#F9FAFB]">
+            <LogOut size={17} />
+            <span>Logout</span>
+          </button>
+          ) : (
+           <>
           <NavLink to="/register" className={linkClass}>
             <UserPlus size={17} />
             <span>Register</span>
           </NavLink>
-          <button onClick={handleLogout} className="inline-flex items-center gap-2 rounded-2xl px-3 py-2 text-sm font-semibold text-[#9CA3AF] hover:bg-white/10 hover:text-[#F9FAFB]">
-            <LogOut size={17} />
-            <span>Logout</span>
-          </button>
+          <NavLink to="/login" className={linkClass}>
+            <LogIn size={17} />
+            <span>Login</span>
+          </NavLink>
+          </>
+        )}
         </div>
 
         <button
@@ -86,6 +92,13 @@ const Navbar = () => {
         <div className="border-t border-[rgba(212,175,55,0.18)] bg-[#111827] px-4 pb-5 lg:hidden">
           <div className="mx-auto grid max-w-7xl gap-2 py-4 sm:grid-cols-2">
             {renderLinks()}
+            {isLoggedIn ? (
+            <button onClick={handleLogout} className="inline-flex items-center gap-2 rounded-2xl px-3 py-2 text-sm font-semibold bg-orange-950 text-[#9CA3AF] hover:bg-white/10 hover:text-[#F9FAFB]">
+              <LogOut size={17} />
+              <span>Logout</span>
+            </button>
+            ) : ( 
+              <>
             <NavLink to="/login" className={linkClass} onClick={() => setIsOpen(false)}>
               <LogIn size={17} />
               <span>Login</span>
@@ -94,10 +107,8 @@ const Navbar = () => {
               <UserPlus size={17} />
               <span>Register</span>
             </NavLink>
-            <button onClick={handleLogout} className="inline-flex items-center gap-2 rounded-2xl px-3 py-2 text-sm font-semibold text-[#9CA3AF] hover:bg-white/10 hover:text-[#F9FAFB]">
-              <LogOut size={17} />
-              <span>Logout</span>
-            </button>
+            </>
+            )}
           </div>
         </div>
       )}

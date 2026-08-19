@@ -22,7 +22,7 @@ const googleClientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
 function AppContent() {
   return (
     <Router>
-      <div className="min-h-screen bg-[#111827] text-[#F9FAFB]">
+      <div className="min-h-screen bg-[#111827]">
         <Navbar />
         <Toaster
           position="top-right"
